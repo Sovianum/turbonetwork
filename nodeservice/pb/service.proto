@@ -1,0 +1,120 @@
+syntax = "proto3";
+package nodeservice;
+option go_package="pb";
+
+
+service NodeService {
+    rpc CreateNodes (CreateRequest) returns (ModifyResponse) {};
+    rpc UpdateNodes (UpdateRequest) returns (ModifyResponse) {};
+    rpc DeleteNodes (Identifiers) returns (ModifyResponse) {};
+    rpc GetNodes (Identifiers) returns (StateResponse) {};
+    rpc Process (Identifiers) returns (BaseResponseList) {};
+    rpc Link (LinkRequest) returns (BaseResponseList) {};
+    rpc GetDescription (Empty) returns (ServiceDescription) {};
+}
+
+message Empty {}
+
+message StateResponse {
+    repeated UnitResponse items = 1;
+
+    message UnitResponse {
+        BaseResponse base = 1;
+        NodeIdentifier identifier = 2;
+        NodeState state = 3;
+    }
+}
+
+message ModifyResponse {
+    repeated UnitResponse items = 1;
+
+    message UnitResponse {
+        NodeIdentifier identifier = 1;
+        BaseResponse base = 2;
+    }
+}
+
+message BaseResponseList {
+    BaseResponse base = 1;
+    repeated BaseResponse items = 2;
+}
+
+message BaseResponse {
+    int32 status = 1;
+    string description = 2;
+}
+
+message NodeState {
+    string name = 1;
+    map<string, double> numValues = 2;
+    map<string, string> stringValues = 3;
+    map<string, NodeState> children = 4;
+}
+
+message ServiceDescription {
+    string description = 1;
+    repeated NodeDescription nodes = 2;
+}
+
+message NodeDescription {
+    string type = 1;
+    string description = 2;
+}
+
+message LinkRequest {
+    repeated UnitRequest items = 1;
+
+    message UnitRequest {
+        LinkType linkType = 1;
+        PortIdentifier id1 = 2;
+        PortIdentifier id2 = 3;
+
+        enum LinkType {
+            SIMPLE = 0;
+            WEAK_FIRST = 1;
+            WEAK_SECOND = 2;
+            WEAK_BOTH = 3;
+        }
+    }
+}
+
+message UpdateRequest {
+    repeated UnitRequest items = 1;
+
+    message UnitRequest {
+        NodeIdentifier identifier = 1;
+        RequestData data = 2;
+    }
+}
+
+message CreateRequest {
+    repeated UnitRequest items = 1;
+
+    message UnitRequest {
+        string nodeName = 1;
+        string nodeType = 2;
+        RequestData data = 3;
+    }
+}
+
+message Identifiers {
+    repeated NodeIdentifier ids = 1;
+}
+
+message PortIdentifier {
+    NodeIdentifier nodeIdentifier = 1;
+    string portTag = 2;
+}
+
+message NodeIdentifier {
+    int32 id = 1;
+    string nodeType = 2;
+}
+
+message RequestData {
+    repeated double dArgs = 1;
+    repeated string sArgs = 2;
+
+    map<string, double> dKwargs = 3;
+    map<string, string> sKwargs = 4;
+}
