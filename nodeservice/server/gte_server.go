@@ -73,15 +73,21 @@ func (s *gteServer) UpdateNodes(c context.Context, r *pb.UpdateRequest) (resp *p
 	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
 
 	for i, item := range r.Items {
+		node, nodeErr := s.nodeStorage.Get(item.Identifier)
+		if nodeErr != nil {
+			responseItems[i] = GetModifyErrResponseItem(nodeErr.Error(), NotFound)
+			continue
+		}
+
 		updater, err := s.updaterFactory.GetUpdater(item.Identifier.NodeType)
 		if err != nil {
 			responseItems[i] = GetModifyErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
-		updateErr := updater(item.Data)
+		updateErr := updater(node.Node, item.Data)
 		if updateErr != nil {
-			responseItems[i] = GetModifyErrResponseItem(updateErr.Error(), NotFound)
+			responseItems[i] = GetModifyErrResponseItem(updateErr.Error(), InternalError)
 			continue
 		}
 		responseItems[i] = GetModifySuccessResponseItem(item.Identifier)
@@ -204,11 +210,13 @@ func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.ModifyR
 		port1, portErr1 := portExtractor(item.Id1)
 		if portErr1 != nil {
 			responseItems[i] = GetModifyErrResponseItem(portErr1.Error(), NotFound)
+			continue
 		}
 
 		port2, portErr2 := portExtractor(item.Id2)
-		if port2 != nil {
+		if portErr2 != nil {
 			responseItems[i] = GetModifyErrResponseItem(portErr2.Error(), NotFound)
+			continue
 		}
 
 		switch item.LinkType {

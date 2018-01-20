@@ -3,9 +3,10 @@ package factories
 import (
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
 	"fmt"
+	"github.com/Sovianum/turbocycle/core/graph"
 )
 
-type UpdaterType func(data *pb.RequestData) error
+type UpdaterType func(node graph.Node, data *pb.RequestData) error
 
 type UpdaterFactory interface {
 	GetUpdater(nodeType string) (UpdaterType, error)

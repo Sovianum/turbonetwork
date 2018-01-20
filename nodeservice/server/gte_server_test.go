@@ -20,6 +20,7 @@ type GTEServerTestSuite struct {
 	constructorFactory *mocks2.ConstructorFactoryMock
 	stateGetterFactory *mocks2.StateGetterFactoryMock
 	updaterFactory     *mocks2.UpdaterFactoryMock
+	portGetterFactory *mocks2.PortGetterFactoryMock
 }
 
 func (s *GTEServerTestSuite) SetupTest() {
@@ -29,11 +30,13 @@ func (s *GTEServerTestSuite) SetupTest() {
 	s.server.constructorFactory = mocks2.NewConstructorFactoryMock()
 	s.server.stateGetterFactory = mocks2.NewStateGetterFactoryMock()
 	s.server.updaterFactory = mocks2.NewUpdaterFactoryMock()
+	s.server.portGetterFactory = mocks2.NewPortGetterFactoryMock()
 
 	s.storage = s.server.nodeStorage.(*mocks.NodeStorageMock)
 	s.constructorFactory = s.server.constructorFactory.(*mocks2.ConstructorFactoryMock)
 	s.stateGetterFactory = s.server.stateGetterFactory.(*mocks2.StateGetterFactoryMock)
 	s.updaterFactory = s.server.updaterFactory.(*mocks2.UpdaterFactoryMock)
+	s.portGetterFactory = s.server.portGetterFactory.(*mocks2.PortGetterFactoryMock)
 }
 
 func (s *GTEServerTestSuite) TestCreateNodes_Success() {
@@ -125,6 +128,96 @@ func (s *GTEServerTestSuite) TestCreateNodes_Panic() {
 	s.Require().Equal(0, len(response.Items))
 	s.EqualValues(InternalError, response.Base.Status)
 	s.True(strings.HasPrefix(response.Base.Description, msg))
+}
+
+func (s *GTEServerTestSuite) TestUpdateNodes_Success() {
+	s.updaterFactory.ExpectResponse(
+		func(node graph.Node, data *pb.RequestData) error {
+			return nil
+		}, nil,
+	)
+
+	s.storage.ExpectGetResponse(&factories.TypedNode{
+		NodeType: "test",
+		Node: graph.NewTestNode(0, 0, true, func() error {
+			return nil
+		}),
+	}, nil)
+
+	req := s.getValidUpdateRequest()
+	response, err := s.server.UpdateNodes(nil, req)
+
+	s.Require().Nil(err)
+	s.Require().Equal(1, len(response.Items))
+	s.EqualValues(OK, response.Items[0].Base.Status)
+	s.EqualValues(1, response.Items[0].Identifiers[0].Id)
+}
+
+func (s *GTEServerTestSuite) TestUpdateNodes_NodeNotFound() {
+	s.updaterFactory.ExpectResponse(
+		func(node graph.Node, data *pb.RequestData) error {
+			return nil
+		}, nil,
+	)
+
+	e := fmt.Errorf("node not found")
+	s.storage.ExpectGetResponse(nil, e)
+
+	req := s.getValidUpdateRequest()
+	response, err := s.server.UpdateNodes(nil, req)
+
+	s.Require().Nil(err)
+	s.Require().Equal(1, len(response.Items))
+	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(e.Error(), response.Items[0].Base.Description)
+}
+
+func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterNotFound() {
+	e := fmt.Errorf("updater not found")
+	s.updaterFactory.ExpectResponse(
+		func(node graph.Node, data *pb.RequestData) error {
+			return nil
+		}, e,
+	)
+
+	s.storage.ExpectGetResponse(&factories.TypedNode{
+		NodeType: "test",
+		Node: graph.NewTestNode(0, 0, true, func() error {
+			return nil
+		}),
+	}, nil)
+
+	req := s.getValidUpdateRequest()
+	response, err := s.server.UpdateNodes(nil, req)
+
+	s.Require().Nil(err)
+	s.Require().Equal(1, len(response.Items))
+	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(e.Error(), response.Items[0].Base.Description)
+}
+
+func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterFailed() {
+	e := fmt.Errorf("updater failed")
+	s.updaterFactory.ExpectResponse(
+		func(node graph.Node, data *pb.RequestData) error {
+			return e
+		}, nil,
+	)
+
+	s.storage.ExpectGetResponse(&factories.TypedNode{
+		NodeType: "test",
+		Node: graph.NewTestNode(0, 0, true, func() error {
+			return nil
+		}),
+	}, nil)
+
+	req := s.getValidUpdateRequest()
+	response, err := s.server.UpdateNodes(nil, req)
+
+	s.Require().Nil(err)
+	s.Require().Equal(1, len(response.Items))
+	s.EqualValues(InternalError, response.Items[0].Base.Status)
+	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
 func (s *GTEServerTestSuite) TestDeleteNodes_Success() {
@@ -311,6 +404,122 @@ func (s *GTEServerTestSuite) TestProcess_NodeNotFound() {
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
+func (s *GTEServerTestSuite) TestLink_Success() {
+	s.storage.ExpectGetResponse(
+		&factories.TypedNode{
+			NodeType: "test",
+			Node: graph.NewTestNode(0, 0, true, func() error {
+				return nil
+			}),
+		}, nil,
+	)
+
+	s.storage.ExpectGetResponse(
+		&factories.TypedNode{
+			NodeType: "test",
+			Node: graph.NewTestNode(0, 0, true, func() error {
+				return nil
+			}),
+		}, nil,
+	)
+
+	s.portGetterFactory.ExpectResponse(
+		func(node *factories.TypedNode, tag string) (graph.Port, error) {
+			return graph.NewAttachedPort(node.Node), nil
+		}, nil,
+	)
+
+	s.portGetterFactory.ExpectResponse(
+		func(node *factories.TypedNode, tag string) (graph.Port, error) {
+			return graph.NewAttachedPort(node.Node), nil
+		}, nil,
+	)
+
+	r, err := s.server.Link(nil, s.getValidLinkRequest())
+	s.Require().Nil(err)
+
+	s.Require().Equal(1, len(r.Items))
+	s.EqualValues(OK, r.Items[0].Base.Status)
+	s.EqualValues(1, r.Items[0].Identifiers[0].Id)
+	s.EqualValues(2, r.Items[0].Identifiers[1].Id)
+}
+
+func (s *GTEServerTestSuite) TestLink_NodeNotFound() {
+	e := fmt.Errorf("err not found")
+	s.storage.ExpectGetResponse(nil, e)
+
+	r, err := s.server.Link(nil, s.getValidLinkRequest())
+	s.Require().Nil(err)
+
+	s.Require().Equal(1, len(r.Items))
+	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(e.Error(), r.Items[0].Base.Description)
+}
+
+func (s *GTEServerTestSuite) TestLink_GetterNotFound() {
+	s.storage.ExpectGetResponse(
+		&factories.TypedNode{
+			NodeType: "test",
+			Node: graph.NewTestNode(0, 0, true, func() error {
+				return nil
+			}),
+		}, nil,
+	)
+
+	e := fmt.Errorf("err not found")
+	s.portGetterFactory.ExpectResponse(nil, e)
+
+	r, err := s.server.Link(nil, s.getValidLinkRequest())
+	s.Require().Nil(err)
+
+	s.Require().Equal(1, len(r.Items))
+	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(e.Error(), r.Items[0].Base.Description)
+}
+
+func (s *GTEServerTestSuite) TestLink_PortGetterError() {
+	s.storage.ExpectGetResponse(
+		&factories.TypedNode{
+			NodeType: "test",
+			Node: graph.NewTestNode(0, 0, true, func() error {
+				return nil
+			}),
+		}, nil,
+	)
+
+	e := fmt.Errorf("err not found")
+	s.portGetterFactory.ExpectResponse(
+		func(node *factories.TypedNode, tag string) (graph.Port, error) {
+			return nil, e
+		}, nil,
+	)
+
+	r, err := s.server.Link(nil, s.getValidLinkRequest())
+	s.Require().Nil(err)
+
+	s.Require().Equal(1, len(r.Items))
+	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(e.Error(), r.Items[0].Base.Description)
+}
+
+func (s *GTEServerTestSuite) getValidLinkRequest() *pb.LinkRequest {
+	nodeIds := s.getNodeIdentifiers(1, 2)
+	return &pb.LinkRequest{
+		Items:[]*pb.LinkRequest_UnitRequest{
+			{
+				Id1:&pb.PortIdentifier{
+					NodeIdentifier:nodeIds.Ids[0],
+					PortTag:"port",
+				},
+				Id2:&pb.PortIdentifier{
+					NodeIdentifier:nodeIds.Ids[1],
+					PortTag:"port",
+				},
+			},
+		},
+	}
+}
+
 func (s *GTEServerTestSuite) getValidCreateRequest() *pb.CreateRequest {
 	req, _ := GetCreateRequest(
 		[]string{"node"},
@@ -319,6 +528,12 @@ func (s *GTEServerTestSuite) getValidCreateRequest() *pb.CreateRequest {
 			{},
 		},
 	)
+	return req
+}
+
+func (s *GTEServerTestSuite) getValidUpdateRequest() *pb.UpdateRequest {
+	ids := s.getNodeIdentifiers(1)
+	req, _ := GetUpdateRequest(ids.Ids, []map[string]float64{{}})
 	return req
 }
 
