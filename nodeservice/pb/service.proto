@@ -8,15 +8,16 @@ service NodeService {
     rpc UpdateNodes (UpdateRequest) returns (ModifyResponse) {};
     rpc DeleteNodes (Identifiers) returns (ModifyResponse) {};
     rpc GetNodes (Identifiers) returns (StateResponse) {};
-    rpc Process (Identifiers) returns (BaseResponseList) {};
-    rpc Link (LinkRequest) returns (BaseResponseList) {};
+    rpc Process (Identifiers) returns (ModifyResponse) {};
+    rpc Link (LinkRequest) returns (ModifyResponse) {};
     rpc GetDescription (Empty) returns (ServiceDescription) {};
 }
 
 message Empty {}
 
 message StateResponse {
-    repeated UnitResponse items = 1;
+    BaseResponse base = 1;
+    repeated UnitResponse items = 2;
 
     message UnitResponse {
         BaseResponse base = 1;
@@ -26,17 +27,13 @@ message StateResponse {
 }
 
 message ModifyResponse {
-    repeated UnitResponse items = 1;
+    BaseResponse base = 1;
+    repeated UnitResponse items = 2;
 
     message UnitResponse {
-        NodeIdentifier identifier = 1;
+        repeated Identifiers identifiers = 1;
         BaseResponse base = 2;
     }
-}
-
-message BaseResponseList {
-    BaseResponse base = 1;
-    repeated BaseResponse items = 2;
 }
 
 message BaseResponse {

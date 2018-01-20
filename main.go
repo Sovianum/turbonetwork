@@ -1,13 +1,14 @@
 package main
 
 import (
-	"net"
+	"context"
 	"fmt"
-	"log"
-	"google.golang.org/grpc"
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server"
-	"context"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
+	"google.golang.org/grpc"
+	"log"
+	"net"
 )
 
 var port = 8082
@@ -19,7 +20,9 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterNodeServiceServer(grpcServer, &server.Server{})
+	gteServer := server.NewGTEServer()
+
+	pb.RegisterNodeServiceServer(grpcServer, gteServer)
 	go grpcServer.Serve(lis)
 
 	conn, clientErr := grpc.Dial(fmt.Sprintf("127.0.0.1:%d", port), grpc.WithInsecure())
@@ -28,9 +31,21 @@ func main() {
 	}
 
 	client := pb.NewNodeServiceClient(conn)
-	resp, err := client.CreateNodes(context.Background(), &pb.CreateRequest{})
+
+	createReq, _ := server.GetCreateRequest([]string{"node"}, []string{factories.PressureLossNodeType}, []map[string]float64{
+		{"sigma": 1},
+	})
+	resp, err := client.CreateNodes(context.Background(), createReq)
 	if err != nil {
 		log.Fatalf("Failed to get response: %s", err.Error())
 	}
 	log.Printf("Succeeded %v", *resp)
+
+	resp1, err1 := client.Process(context.Background(), &pb.Identifiers{
+		Ids:[]*pb.NodeIdentifier{resp.Items[0].Identifiers[0]},
+	})
+	if err1 != nil {
+		log.Fatalf("Failed to get response: %s", err1.Error())
+	}
+	log.Printf("Succeeded %v", *resp1)
 }

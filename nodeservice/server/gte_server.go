@@ -1,10 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
 	"golang.org/x/net/context"
+	"runtime/debug"
 )
 
 func NewGTEServer() pb.NodeServiceServer {
@@ -26,143 +28,158 @@ type gteServer struct {
 	portGetterFactory  factories.PortGetterFactory
 }
 
-func (s *gteServer) CreateNodes(c context.Context, r *pb.CreateRequest) (*pb.ModifyResponse, error) {
+func (s *gteServer) CreateNodes(c context.Context, r *pb.CreateRequest) (resp *pb.ModifyResponse, e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
+		}
+	}()
+
 	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
 
 	for i, item := range r.Items {
 		constructor, err := s.constructorFactory.GetConstructor(item.NodeType)
-
 		if err != nil {
-			responseItems[i] = s.getModifyErrResponseItem(err, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
 		node, nodeErr := constructor(item.Data)
 		if nodeErr != nil {
-			responseItems[i] = s.getModifyErrResponseItem(nodeErr, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(nodeErr.Error(), InternalError)
 			continue
 		}
 		node.SetName(item.NodeName)
 
 		id, idErr := s.nodeStorage.Add(factories.NewTypedNode(node, item.NodeType))
 		if idErr != nil {
-			responseItems[i] = s.getModifyErrResponseItem(idErr, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(idErr.Error(), InternalError)
 			continue
 		}
 
-		item := s.getModifySuccessResponseItem()
-		item.Identifier = id
-		responseItems[i] = item
+		responseItems[i] = GetModifySuccessResponseItem(id)
 	}
 
-	return &pb.ModifyResponse{Items: responseItems}, nil
+	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) UpdateNodes(c context.Context, r *pb.UpdateRequest) (*pb.ModifyResponse, error) {
+func (s *gteServer) UpdateNodes(c context.Context, r *pb.UpdateRequest) (resp *pb.ModifyResponse, e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
+		}
+	}()
+
 	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
 
 	for i, item := range r.Items {
 		updater, err := s.updaterFactory.GetUpdater(item.Identifier.NodeType)
 		if err != nil {
-			responseItems[i] = s.getModifyErrResponseItem(err, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
 		updateErr := updater(item.Data)
 		if updateErr != nil {
-			responseItems[i] = s.getModifyErrResponseItem(updateErr, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(updateErr.Error(), NotFound)
 			continue
 		}
-		responseItems[i] = s.getModifySuccessResponseItem()
+		responseItems[i] = GetModifySuccessResponseItem(item.Identifier)
 	}
 
-	return &pb.ModifyResponse{Items: responseItems}, nil
+	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (*pb.ModifyResponse, error) {
+func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *pb.ModifyResponse, e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
+		}
+	}()
+
 	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(ids.Ids))
 
 	for i, id := range ids.Ids {
 		if err := s.nodeStorage.Drop(id); err != nil {
-			responseItems[i] = s.getModifyErrResponseItem(err, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(err.Error(), NotFound)
 		} else {
-			item := s.getModifySuccessResponseItem()
-			item.Identifier = id
-			responseItems[i] = item
+			responseItems[i] = GetModifySuccessResponseItem(id)
 		}
 	}
 
-	return &pb.ModifyResponse{Items: responseItems}, nil
+	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) GetNodes(c context.Context, r *pb.Identifiers) (*pb.StateResponse, error) {
-	responseItems := make([]*pb.StateResponse_UnitResponse, len(r.Ids))
+func (s *gteServer) GetNodes(c context.Context, r *pb.Identifiers) (resp *pb.StateResponse, e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = GetStateErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
+		}
+	}()
 
+	responseItems := make([]*pb.StateResponse_UnitResponse, len(r.Ids))
 	for i, item := range r.Ids {
 		stateGetter, err := s.stateGetterFactory.GetStateGetter(item.NodeType)
 		if err != nil {
-			responseItems[i] = s.getStateErrResponseItem(err, NotFound)
+			responseItems[i] = GetStateErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
 		node, nodeErr := s.nodeStorage.Get(item)
 		if nodeErr != nil {
-			responseItems[i] = s.getStateErrResponseItem(err, NotFound)
+			responseItems[i] = GetStateErrResponseItem(nodeErr.Error(), NotFound)
 			continue
 		}
 
 		state, stateErr := stateGetter(node)
 		if stateErr != nil {
-			responseItems[i] = s.getStateErrResponseItem(stateErr, NotFound)
+			responseItems[i] = GetStateErrResponseItem(stateErr.Error(), InternalError)
 			continue
 		}
 
-		responseItems[i] = &pb.StateResponse_UnitResponse{
-			Identifier: item,
-			Base:       s.getBaseSuccessResponseItem(),
-			State:      state,
-		}
+		responseItems[i] = GetStateSuccessResponseItem(item, state)
 	}
 
-	return &pb.StateResponse{Items: responseItems}, nil
+	return GetStateSuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.BaseResponseList, error error) {
+func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.ModifyResponse, error error) {
 	defer func() {
 		if r := recover(); r != nil {
-			resp = &pb.BaseResponseList{
-				Base:s.getBaseSuccessResponseItem(),
-			}
-			error = nil
+			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
 			return
 		}
 	}()
 
-	responseItems := make([]*pb.BaseResponse, len(r.Ids))
+	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Ids))
 
 	for i, item := range r.Ids {
 		node, nodeErr := s.nodeStorage.Get(item)
 		if nodeErr != nil {
-			responseItems[i] = s.getBaseErrResponseItem(nodeErr, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(nodeErr.Error(), NotFound)
 			continue
 		}
+
 		err := node.Node.Process()
-
 		if err != nil {
-			responseItems[i] = s.getBaseErrResponseItem(err, InternalError)
+			responseItems[i] = GetModifyErrResponseItem(err.Error(), InternalError)
 			continue
 		}
 
-		responseItems[i] = s.getBaseSuccessResponseItem()
+		responseItems[i] = GetModifySuccessResponseItem(item)
 	}
 
-	return &pb.BaseResponseList{
-		Base:s.getBaseSuccessResponseItem(),
-		Items: responseItems,
-	}, nil
+	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (*pb.BaseResponseList, error) {
+func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.ModifyResponse, e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
+			return
+		}
+	}()
+
 	portExtractor := func(portIdentifier *pb.PortIdentifier) (graph.Port, error) {
 		node, nodeErr := s.nodeStorage.Get(portIdentifier.NodeIdentifier)
 		if nodeErr != nil {
@@ -182,16 +199,16 @@ func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (*pb.BaseResponse
 		return port, nil
 	}
 
-	responseItems := make([]*pb.BaseResponse, len(r.Items))
+	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
 	for i, item := range r.Items {
 		port1, portErr1 := portExtractor(item.Id1)
 		if portErr1 != nil {
-			responseItems[i] = s.getBaseErrResponseItem(portErr1, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(portErr1.Error(), NotFound)
 		}
 
 		port2, portErr2 := portExtractor(item.Id2)
 		if port2 != nil {
-			responseItems[i] = s.getBaseErrResponseItem(portErr2, NotFound)
+			responseItems[i] = GetModifyErrResponseItem(portErr2.Error(), NotFound)
 		}
 
 		switch item.LinkType {
@@ -204,10 +221,10 @@ func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (*pb.BaseResponse
 		default:
 			graph.Link(port1, port2)
 		}
-		responseItems[i] = s.getBaseSuccessResponseItem()
+		responseItems[i] = GetModifySuccessResponseItem(item.Id1.NodeIdentifier, item.Id2.NodeIdentifier)
 	}
 
-	return &pb.BaseResponseList{Items: responseItems}, nil
+	return GetModifySuccessResponse(responseItems), nil
 }
 
 func (s *gteServer) GetDescription(context.Context, *pb.Empty) (*pb.ServiceDescription, error) {
@@ -215,36 +232,4 @@ func (s *gteServer) GetDescription(context.Context, *pb.Empty) (*pb.ServiceDescr
 		Description: "gte_service",
 		Nodes:       nodeDescriptionList,
 	}, nil
-}
-
-func (s *gteServer) getStateErrResponseItem(err error, status int32) *pb.StateResponse_UnitResponse {
-	return &pb.StateResponse_UnitResponse{
-		Base: s.getBaseErrResponseItem(err, status),
-	}
-}
-
-func (s *gteServer) getModifyErrResponseItem(err error, status int32) *pb.ModifyResponse_UnitResponse {
-	return &pb.ModifyResponse_UnitResponse{
-		Base: s.getBaseErrResponseItem(err, status),
-	}
-}
-
-func (s *gteServer) getBaseErrResponseItem(err error, status int32) *pb.BaseResponse {
-	return &pb.BaseResponse{
-		Status:      status,
-		Description: err.Error(),
-	}
-}
-
-func (s *gteServer) getModifySuccessResponseItem() *pb.ModifyResponse_UnitResponse {
-	return &pb.ModifyResponse_UnitResponse{
-		Base: s.getBaseSuccessResponseItem(),
-	}
-}
-
-func (s *gteServer) getBaseSuccessResponseItem() *pb.BaseResponse {
-	return &pb.BaseResponse{
-		Status:      OK,
-		Description: "ok",
-	}
 }
