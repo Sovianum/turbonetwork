@@ -51,7 +51,12 @@ func (m *NodeStorageMock) Add(node *factories.TypedNode) (*pb.NodeIdentifier, er
 	r := m.addResponses[m.addCnt]
 	m.addCnt++
 
-	return r.First.(*pb.NodeIdentifier), r.Second.(error)
+	var err error
+	if r.Second != nil {
+		err = r.Second.(error)
+	}
+
+	return r.First.(*pb.NodeIdentifier), err
 }
 
 func (m *NodeStorageMock) Get(id *pb.NodeIdentifier) (*factories.TypedNode, error) {
