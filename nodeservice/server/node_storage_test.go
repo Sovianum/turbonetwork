@@ -32,12 +32,10 @@ func (s *NodeStorageTestSuite) TestDelete() {
 		graph.NewTestNode(0, 0, true, nil),
 		"test",
 	))
-
-	s.Require().Equal(len(s.storage.nodeMap), 1)
 	s.Require().Nil(err)
 
 	err = s.storage.Drop(id)
-	s.Equal(len(s.storage.nodeMap), 0)
+	s.Require().Nil(err)
 }
 
 func (s *NodeStorageTestSuite) TestGet() {
@@ -45,7 +43,6 @@ func (s *NodeStorageTestSuite) TestGet() {
 
 	id, err := s.storage.Add(factories.NewTypedNode(inputNode, "test"))
 
-	s.Require().Equal(len(s.storage.nodeMap), 1)
 	s.Require().Nil(err)
 
 	node, err := s.storage.Get(id)
