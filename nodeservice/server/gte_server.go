@@ -116,34 +116,34 @@ func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *p
 	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) GetNodes(c context.Context, r *pb.Identifiers) (resp *pb.StateResponse, e error) {
+func (s *gteServer) GetNodes(c context.Context, r *pb.GetStateRequest) (resp *pb.StateResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetStateErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
 		}
 	}()
 
-	responseItems := make([]*pb.StateResponse_UnitResponse, len(r.Ids))
-	for i, item := range r.Ids {
-		stateGetter, err := s.stateGetterFactory.GetStateGetter(item.NodeType)
+	responseItems := make([]*pb.StateResponse_UnitResponse, len(r.Items))
+	for i, item := range r.Items {
+		stateGetter, err := s.stateGetterFactory.GetStateGetter(item.Identifier.NodeType)
 		if err != nil {
 			responseItems[i] = GetStateErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
-		node, nodeErr := s.nodeStorage.Get(item)
+		node, nodeErr := s.nodeStorage.Get(item.Identifier)
 		if nodeErr != nil {
 			responseItems[i] = GetStateErrResponseItem(nodeErr.Error(), NotFound)
 			continue
 		}
 
-		state, stateErr := stateGetter(node)
+		state, stateErr := stateGetter(node, item.RequiredFields)
 		if stateErr != nil {
 			responseItems[i] = GetStateErrResponseItem(stateErr.Error(), InternalError)
 			continue
 		}
 
-		responseItems[i] = GetStateSuccessResponseItem(item, state)
+		responseItems[i] = GetStateSuccessResponseItem(item.Identifier, state)
 	}
 
 	return GetStateSuccessResponse(responseItems), nil

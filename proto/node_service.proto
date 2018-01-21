@@ -7,7 +7,7 @@ service NodeService {
     rpc CreateNodes (CreateRequest) returns (ModifyResponse) {};
     rpc UpdateNodes (UpdateRequest) returns (ModifyResponse) {};
     rpc DeleteNodes (Identifiers) returns (ModifyResponse) {};
-    rpc GetNodes (Identifiers) returns (StateResponse) {};
+    rpc GetNodes (GetStateRequest) returns (StateResponse) {};
     rpc Process (Identifiers) returns (ModifyResponse) {};
     rpc Link (LinkRequest) returns (ModifyResponse) {};
     rpc GetDescription (Empty) returns (ServiceDescription) {};
@@ -31,7 +31,7 @@ message ModifyResponse {
     repeated UnitResponse items = 2;
 
     message UnitResponse {
-        repeated Identifiers identifiers = 1;
+        repeated NodeIdentifier identifiers = 1;
         BaseResponse base = 2;
     }
 }
@@ -81,6 +81,16 @@ message UpdateRequest {
     message UnitRequest {
         NodeIdentifier identifier = 1;
         RequestData data = 2;
+    }
+}
+
+message GetStateRequest {
+    repeated UnitRequest items = 1;
+
+    message UnitRequest {
+        NodeIdentifier identifier = 1;
+        // optional field neccessary if complete state is not required
+        repeated string requiredFields = 2;
     }
 }
 

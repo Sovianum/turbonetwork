@@ -246,7 +246,7 @@ func (s *GTEServerTestSuite) TestDelete_NotFound() {
 
 func (s *GTEServerTestSuite) TestGetNodes_Success() {
 	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode) (*pb.NodeState, error) {
+		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
 			return &pb.NodeState{}, nil
 		}, nil,
 	)
@@ -258,8 +258,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Success() {
 		}),
 	}, nil)
 
-	ids := s.getNodeIdentifiers(1)
-	response, err := s.server.GetNodes(nil, ids)
+	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -270,13 +269,12 @@ func (s *GTEServerTestSuite) TestGetNodes_Success() {
 func (s *GTEServerTestSuite) TestGetNodes_GetterNotFound() {
 	e := fmt.Errorf("getter not found")
 	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode) (*pb.NodeState, error) {
+		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
 			return &pb.NodeState{}, nil
 		}, e,
 	)
 
-	ids := s.getNodeIdentifiers(1)
-	response, err := s.server.GetNodes(nil, ids)
+	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -287,7 +285,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterNotFound() {
 func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 	e := fmt.Errorf("getter failed")
 	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode) (*pb.NodeState, error) {
+		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
 			return nil, e
 		}, nil,
 	)
@@ -299,8 +297,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 		}),
 	}, nil)
 
-	ids := s.getNodeIdentifiers(1)
-	response, err := s.server.GetNodes(nil, ids)
+	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -310,7 +307,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 
 func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
 	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode) (*pb.NodeState, error) {
+		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
 			return &pb.NodeState{}, nil
 		}, nil,
 	)
@@ -318,8 +315,7 @@ func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
 	e := fmt.Errorf("getter failed")
 	s.storage.ExpectGetResponse(nil, e)
 
-	ids := s.getNodeIdentifiers(1)
-	response, err := s.server.GetNodes(nil, ids)
+	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -330,7 +326,7 @@ func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
 func (s *GTEServerTestSuite) TestGetNodes_Panic() {
 	msg := "panic msg"
 	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode) (*pb.NodeState, error) {
+		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
 			panic(msg)
 		}, nil,
 	)
@@ -342,8 +338,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Panic() {
 		}),
 	}, nil)
 
-	ids := s.getNodeIdentifiers(1)
-	response, err := s.server.GetNodes(nil, ids)
+	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(0, len(response.Items))
@@ -500,6 +495,21 @@ func (s *GTEServerTestSuite) TestLink_PortGetterError() {
 	s.Require().Equal(1, len(r.Items))
 	s.EqualValues(NotFound, r.Items[0].Base.Status)
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
+}
+
+func (s *GTEServerTestSuite) getValidGetStateRequest() *pb.GetStateRequest {
+	ids := s.getNodeIdentifiers(1)
+	result := &pb.GetStateRequest{
+		Items:make([]*pb.GetStateRequest_UnitRequest, 0),
+	}
+
+	for _, id := range ids.Ids {
+		result.Items = append(result.Items, &pb.GetStateRequest_UnitRequest{
+			Identifier: id,
+		})
+	}
+
+	return result
 }
 
 func (s *GTEServerTestSuite) getValidLinkRequest() *pb.LinkRequest {

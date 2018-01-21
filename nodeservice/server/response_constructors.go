@@ -48,9 +48,9 @@ func GetModifyErrResponseItem(msg string, status int32) *pb.ModifyResponse_UnitR
 	}
 }
 
-func GetModifySuccessResponseItem(id ...*pb.NodeIdentifier) *pb.ModifyResponse_UnitResponse {
+func GetModifySuccessResponseItem(ids ...*pb.NodeIdentifier) *pb.ModifyResponse_UnitResponse {
 	return &pb.ModifyResponse_UnitResponse{
-		Identifiers: id,
+		Identifiers: ids,
 		Base:        GetBaseSuccessResponseItem(),
 	}
 }

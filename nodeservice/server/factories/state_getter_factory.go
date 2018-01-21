@@ -10,7 +10,7 @@ import (
 	"github.com/Sovianum/turbocycle/impl/engine/nodes"
 )
 
-type StateGetterType func(node *TypedNode) (*pb.NodeState, error)
+type StateGetterType func(node *TypedNode, requiredFields []string) (*pb.NodeState, error)
 
 type StateGetterFactory interface {
 	GetStateGetter(nodeType string) (StateGetterType, error)
@@ -33,7 +33,7 @@ var stateGetterMap = map[string]StateGetterType{
 	PressureLossNodeType: pressureLossPortStateGetter,
 }
 
-func pressureLossPortStateGetter(typedNode *TypedNode) (*pb.NodeState, error) {
+func pressureLossPortStateGetter(typedNode *TypedNode, requiredFields[]string) (*pb.NodeState, error) {
 	if typedNode.NodeType != PressureLossNodeType {
 		return nil, fmt.Errorf("failed to cast %s to %s", typedNode.NodeType, PressureLossNodeType)
 	}
