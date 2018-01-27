@@ -11,7 +11,7 @@ type NodeAdapterMock struct {
 	UpdateFunc   func(node graph.Node, data *pb.RequestData) error
 	GetStateFunc func(node graph.Node, requiredFields []string) (*pb.NodeState, error)
 	GetPortFunc  func(tag string, node graph.Node) (graph.Port, error)
-	GetDecs      func() []adapters.PortDescription
+	GetDecs      func() adapters.NodeDescription
 }
 
 func (m NodeAdapterMock) Create(data *pb.RequestData) (graph.Node, error) {
@@ -30,6 +30,6 @@ func (m NodeAdapterMock) GetPort(tag string, node graph.Node) (graph.Port, error
 	return m.GetPortFunc(tag, node)
 }
 
-func (m NodeAdapterMock) GetPortDescriptions() []adapters.PortDescription {
+func (m NodeAdapterMock) GetDescription() adapters.NodeDescription {
 	return m.GetDecs()
 }

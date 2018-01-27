@@ -7,7 +7,6 @@ import (
 
 var nodeDescriptionList = []*pb.NodeDescription{
 	{
-		Type:        adapters.PressureLossNodeType,
-		Description: adapters.PressureLossNodeType,
+		NodeType:        adapters.PressureLossNodeType,
 	},
 }

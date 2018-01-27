@@ -54,8 +54,30 @@ message ServiceDescription {
 }
 
 message NodeDescription {
-    string type = 1;
-    string description = 2;
+    string NodeType = 1;
+    repeated AttachedPortDescription basePorts = 2;
+    repeated ContextState contextStates = 3;
+
+    message ContextState {
+        repeated AttachedPortDescription ports = 1;
+    }
+
+    message AttachedPortDescription {
+       PortDescription description = 1;
+       PortType type = 2;
+
+       enum PortType {
+           INPUT = 0;
+           OUTPUT = 1;
+           NEUTRAL = 2;
+           CONTEXT_DEPENDENT = 3;
+       }
+    }
+}
+
+message PortDescription {
+    string prefix = 1;
+    bool isMulti = 2;
 }
 
 message LinkRequest {
@@ -65,14 +87,14 @@ message LinkRequest {
         LinkType linkType = 1;
         PortIdentifier id1 = 2;
         PortIdentifier id2 = 3;
-
-        enum LinkType {
-            SIMPLE = 0;
-            WEAK_FIRST = 1;
-            WEAK_SECOND = 2;
-            WEAK_BOTH = 3;
-        }
     }
+}
+
+enum LinkType {
+    SIMPLE = 0;
+    WEAK_FIRST = 1;
+    WEAK_SECOND = 2;
+    WEAK_BOTH = 3;
 }
 
 message UpdateRequest {
