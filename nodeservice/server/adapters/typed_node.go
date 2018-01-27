@@ -1,4 +1,4 @@
-package factories
+package adapters
 
 import "github.com/Sovianum/turbocycle/core/graph"
 

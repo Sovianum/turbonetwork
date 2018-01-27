@@ -4,28 +4,21 @@ import (
 	"fmt"
 	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"golang.org/x/net/context"
 	"runtime/debug"
 )
 
-func NewGTEServer() pb.NodeServiceServer {
+func NewGTEServer(factory adapters.NodeAdapterFactory) pb.NodeServiceServer {
 	return &gteServer{
-		nodeStorage:        NewMapNodeStorage(),
-		constructorFactory: factories.NewConstructorFactory(),
-		updaterFactory:     factories.NewUpdaterFactory(),
-		stateGetterFactory: factories.NewStateGetterFactory(),
-		portGetterFactory:  factories.NewPortGetterFactory(),
+		nodeStorage: NewMapNodeStorage(),
+		factory:     factory,
 	}
 }
 
 type gteServer struct {
 	nodeStorage NodeStorage
-
-	constructorFactory factories.ConstructorFactory
-	updaterFactory     factories.UpdaterFactory
-	stateGetterFactory factories.StateGetterFactory
-	portGetterFactory  factories.PortGetterFactory
+	factory     adapters.NodeAdapterFactory
 }
 
 func (s *gteServer) CreateNodes(c context.Context, r *pb.CreateRequest) (resp *pb.ModifyResponse, e error) {
@@ -38,20 +31,20 @@ func (s *gteServer) CreateNodes(c context.Context, r *pb.CreateRequest) (resp *p
 	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
 
 	for i, item := range r.Items {
-		constructor, err := s.constructorFactory.GetConstructor(item.NodeType)
+		adapter, err := s.factory.GetAdapter(item.NodeType)
 		if err != nil {
 			responseItems[i] = GetModifyErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
-		node, nodeErr := constructor(item.Data)
+		node, nodeErr := adapter.Create(item.Data)
 		if nodeErr != nil {
 			responseItems[i] = GetModifyErrResponseItem(nodeErr.Error(), InternalError)
 			continue
 		}
 		node.SetName(item.NodeName)
 
-		id, idErr := s.nodeStorage.Add(factories.NewTypedNode(node, item.NodeType))
+		id, idErr := s.nodeStorage.Add(adapters.NewTypedNode(node, item.NodeType))
 		if idErr != nil {
 			responseItems[i] = GetModifyErrResponseItem(idErr.Error(), InternalError)
 			continue
@@ -79,13 +72,13 @@ func (s *gteServer) UpdateNodes(c context.Context, r *pb.UpdateRequest) (resp *p
 			continue
 		}
 
-		updater, err := s.updaterFactory.GetUpdater(item.Identifier.NodeType)
+		adapter, err := s.factory.GetAdapter(item.Identifier.NodeType)
 		if err != nil {
 			responseItems[i] = GetModifyErrResponseItem(err.Error(), NotFound)
 			continue
 		}
 
-		updateErr := updater(node.Node, item.Data)
+		updateErr := adapter.Update(node.Node, item.Data)
 		if updateErr != nil {
 			responseItems[i] = GetModifyErrResponseItem(updateErr.Error(), InternalError)
 			continue
@@ -125,7 +118,7 @@ func (s *gteServer) GetNodes(c context.Context, r *pb.GetStateRequest) (resp *pb
 
 	responseItems := make([]*pb.StateResponse_UnitResponse, len(r.Items))
 	for i, item := range r.Items {
-		stateGetter, err := s.stateGetterFactory.GetStateGetter(item.Identifier.NodeType)
+		adapter, err := s.factory.GetAdapter(item.Identifier.NodeType)
 		if err != nil {
 			responseItems[i] = GetStateErrResponseItem(err.Error(), NotFound)
 			continue
@@ -137,7 +130,7 @@ func (s *gteServer) GetNodes(c context.Context, r *pb.GetStateRequest) (resp *pb
 			continue
 		}
 
-		state, stateErr := stateGetter(node, item.RequiredFields)
+		state, stateErr := adapter.GetState(node.Node, item.RequiredFields)
 		if stateErr != nil {
 			responseItems[i] = GetStateErrResponseItem(stateErr.Error(), InternalError)
 			continue
@@ -192,12 +185,13 @@ func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.ModifyR
 			return nil, nodeErr
 		}
 
-		getter, getterErr := s.portGetterFactory.GetPortGetter(portIdentifier.NodeIdentifier.NodeType)
-		if getterErr != nil {
-			return nil, getterErr
+		adapter, err := s.factory.GetAdapter(portIdentifier.NodeIdentifier.NodeType)
+		//getter, err := s.portGetterFactory.GetPortGetter(portIdentifier.NodeIdentifier.NodeType)
+		if err != nil {
+			return nil, err
 		}
 
-		port, portErr := getter(node, portIdentifier.PortTag)
+		port, portErr := adapter.GetPort(portIdentifier.PortTag, node.Node)
 		if portErr != nil {
 			return nil, portErr
 		}
@@ -220,11 +214,11 @@ func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.ModifyR
 		}
 
 		switch item.LinkType {
-		case pb.LinkRequest_UnitRequest_WEAK_FIRST:
+		case pb.LinkType_WEAK_FIRST:
 			graph.Link(graph.NewWeakPort(port1), port2)
-		case pb.LinkRequest_UnitRequest_WEAK_SECOND:
+		case pb.LinkType_WEAK_SECOND:
 			graph.Link(port1, graph.NewWeakPort(port2))
-		case pb.LinkRequest_UnitRequest_WEAK_BOTH:
+		case pb.LinkType_WEAK_BOTH:
 			graph.Link(graph.NewWeakPort(port1), graph.NewWeakPort(port2))
 		default:
 			graph.Link(port1, port2)

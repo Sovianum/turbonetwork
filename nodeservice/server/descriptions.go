@@ -2,12 +2,12 @@ package server
 
 import (
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 )
 
 var nodeDescriptionList = []*pb.NodeDescription{
 	{
-		Type:factories.PressureLossNodeType,
-		Description:factories.PressureLossNodeType,
+		Type:        adapters.PressureLossNodeType,
+		Description: adapters.PressureLossNodeType,
 	},
 }

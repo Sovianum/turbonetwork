@@ -3,13 +3,12 @@ package server
 import (
 	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
-	mocks2 "github.com/Sovianum/turbonetwork/nodeservice/server/factories/mocks"
 	"github.com/Sovianum/turbonetwork/nodeservice/server/mocks"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"fmt"
 	"strings"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 )
 
 type GTEServerTestSuite struct {
@@ -17,34 +16,27 @@ type GTEServerTestSuite struct {
 	server *gteServer
 
 	storage            *mocks.NodeStorageMock
-	constructorFactory *mocks2.ConstructorFactoryMock
-	stateGetterFactory *mocks2.StateGetterFactoryMock
-	updaterFactory     *mocks2.UpdaterFactoryMock
-	portGetterFactory *mocks2.PortGetterFactoryMock
+	factory *mocks.NodeAdapterFactoryMock
 }
 
 func (s *GTEServerTestSuite) SetupTest() {
-	s.server = NewGTEServer().(*gteServer)
+	s.server = NewGTEServer(nil).(*gteServer)
 
 	s.server.nodeStorage = mocks.NewNodeStorageMock()
-	s.server.constructorFactory = mocks2.NewConstructorFactoryMock()
-	s.server.stateGetterFactory = mocks2.NewStateGetterFactoryMock()
-	s.server.updaterFactory = mocks2.NewUpdaterFactoryMock()
-	s.server.portGetterFactory = mocks2.NewPortGetterFactoryMock()
+	s.server.factory = mocks.NewNodeAdapterFactoryMock()
 
 	s.storage = s.server.nodeStorage.(*mocks.NodeStorageMock)
-	s.constructorFactory = s.server.constructorFactory.(*mocks2.ConstructorFactoryMock)
-	s.stateGetterFactory = s.server.stateGetterFactory.(*mocks2.StateGetterFactoryMock)
-	s.updaterFactory = s.server.updaterFactory.(*mocks2.UpdaterFactoryMock)
-	s.portGetterFactory = s.server.portGetterFactory.(*mocks2.PortGetterFactoryMock)
+	s.factory = s.server.factory.(*mocks.NodeAdapterFactoryMock)
 }
 
 func (s *GTEServerTestSuite) TestCreateNodes_Success() {
-	s.constructorFactory.ExpectResponse(
-		func(data *pb.RequestData) (graph.Node, error) {
-			return graph.NewTestNode(0, 0, true, func() error {
-				return nil
-			}), nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			CreateFunc: func(data *pb.RequestData) (graph.Node, error) {
+				return graph.NewTestNode(0, 0, true, func() error {
+					return nil
+				}), nil
+			},
 		}, nil,
 	)
 
@@ -62,9 +54,7 @@ func (s *GTEServerTestSuite) TestCreateNodes_Success() {
 
 func (s *GTEServerTestSuite) TestCreateNodes_ConstructorNotFound() {
 	e := fmt.Errorf("err not found")
-	s.constructorFactory.ExpectResponse(
-		nil, e,
-	)
+	s.factory.ExpectResponse(nil, e)
 
 	req := s.getValidCreateRequest()
 	response, err := s.server.CreateNodes(nil, req)
@@ -77,9 +67,11 @@ func (s *GTEServerTestSuite) TestCreateNodes_ConstructorNotFound() {
 
 func (s *GTEServerTestSuite) TestCreateNodes_ConstructorErr() {
 	e := fmt.Errorf("err constructor failed")
-	s.constructorFactory.ExpectResponse(
-		func(data *pb.RequestData) (graph.Node, error) {
-			return nil, e
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			CreateFunc: func(data *pb.RequestData) (graph.Node, error) {
+				return nil, e
+			},
 		}, nil,
 	)
 
@@ -93,11 +85,13 @@ func (s *GTEServerTestSuite) TestCreateNodes_ConstructorErr() {
 }
 
 func (s *GTEServerTestSuite) TestCreateNodes_StorageAddError() {
-	s.constructorFactory.ExpectResponse(
-		func(data *pb.RequestData) (graph.Node, error) {
-			return graph.NewTestNode(0, 0, true, func() error {
-				return nil
-			}), nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			CreateFunc: func(data *pb.RequestData) (graph.Node, error) {
+				return graph.NewTestNode(0, 0, true, func() error {
+					return nil
+				}), nil
+			},
 		}, nil,
 	)
 
@@ -115,9 +109,11 @@ func (s *GTEServerTestSuite) TestCreateNodes_StorageAddError() {
 
 func (s *GTEServerTestSuite) TestCreateNodes_Panic() {
 	msg := "panic msg"
-	s.constructorFactory.ExpectResponse(
-		func(data *pb.RequestData) (graph.Node, error) {
-			panic(msg)
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			CreateFunc: func(data *pb.RequestData) (graph.Node, error) {
+				panic(msg)
+			},
 		}, nil,
 	)
 
@@ -131,13 +127,15 @@ func (s *GTEServerTestSuite) TestCreateNodes_Panic() {
 }
 
 func (s *GTEServerTestSuite) TestUpdateNodes_Success() {
-	s.updaterFactory.ExpectResponse(
-		func(node graph.Node, data *pb.RequestData) error {
-			return nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			UpdateFunc: func(node graph.Node, data *pb.RequestData) error {
+				return nil
+			},
 		}, nil,
 	)
 
-	s.storage.ExpectGetResponse(&factories.TypedNode{
+	s.storage.ExpectGetResponse(&adapters.TypedNode{
 		NodeType: "test",
 		Node: graph.NewTestNode(0, 0, true, func() error {
 			return nil
@@ -154,9 +152,11 @@ func (s *GTEServerTestSuite) TestUpdateNodes_Success() {
 }
 
 func (s *GTEServerTestSuite) TestUpdateNodes_NodeNotFound() {
-	s.updaterFactory.ExpectResponse(
-		func(node graph.Node, data *pb.RequestData) error {
-			return nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			UpdateFunc: func(node graph.Node, data *pb.RequestData) error {
+				return nil
+			},
 		}, nil,
 	)
 
@@ -174,13 +174,15 @@ func (s *GTEServerTestSuite) TestUpdateNodes_NodeNotFound() {
 
 func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterNotFound() {
 	e := fmt.Errorf("updater not found")
-	s.updaterFactory.ExpectResponse(
-		func(node graph.Node, data *pb.RequestData) error {
-			return nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			UpdateFunc: func(node graph.Node, data *pb.RequestData) error {
+				return nil
+			},
 		}, e,
 	)
 
-	s.storage.ExpectGetResponse(&factories.TypedNode{
+	s.storage.ExpectGetResponse(&adapters.TypedNode{
 		NodeType: "test",
 		Node: graph.NewTestNode(0, 0, true, func() error {
 			return nil
@@ -198,13 +200,15 @@ func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterNotFound() {
 
 func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterFailed() {
 	e := fmt.Errorf("updater failed")
-	s.updaterFactory.ExpectResponse(
-		func(node graph.Node, data *pb.RequestData) error {
-			return e
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			UpdateFunc: func(node graph.Node, data *pb.RequestData) error {
+				return e
+			},
 		}, nil,
 	)
 
-	s.storage.ExpectGetResponse(&factories.TypedNode{
+	s.storage.ExpectGetResponse(&adapters.TypedNode{
 		NodeType: "test",
 		Node: graph.NewTestNode(0, 0, true, func() error {
 			return nil
@@ -245,13 +249,15 @@ func (s *GTEServerTestSuite) TestDelete_NotFound() {
 }
 
 func (s *GTEServerTestSuite) TestGetNodes_Success() {
-	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
-			return &pb.NodeState{}, nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetStateFunc: func(node graph.Node, requiredFields []string) (*pb.NodeState, error) {
+				return &pb.NodeState{}, nil
+			},
 		}, nil,
 	)
 
-	s.storage.ExpectGetResponse(&factories.TypedNode{
+	s.storage.ExpectGetResponse(&adapters.TypedNode{
 		NodeType: "test",
 		Node: graph.NewTestNode(0, 0, true, func() error {
 			return nil
@@ -268,9 +274,11 @@ func (s *GTEServerTestSuite) TestGetNodes_Success() {
 
 func (s *GTEServerTestSuite) TestGetNodes_GetterNotFound() {
 	e := fmt.Errorf("getter not found")
-	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
-			return &pb.NodeState{}, nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetStateFunc: func(node graph.Node, requiredFields []string) (*pb.NodeState, error) {
+				return &pb.NodeState{}, nil
+			},
 		}, e,
 	)
 
@@ -284,13 +292,15 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterNotFound() {
 
 func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 	e := fmt.Errorf("getter failed")
-	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
-			return nil, e
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetStateFunc: func(node graph.Node, requiredFields []string) (*pb.NodeState, error) {
+				return nil, e
+			},
 		}, nil,
 	)
 
-	s.storage.ExpectGetResponse(&factories.TypedNode{
+	s.storage.ExpectGetResponse(&adapters.TypedNode{
 		NodeType: "test",
 		Node: graph.NewTestNode(0, 0, true, func() error {
 			return nil
@@ -306,9 +316,11 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 }
 
 func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
-	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
-			return &pb.NodeState{}, nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetStateFunc: func(node graph.Node, requiredFields []string) (*pb.NodeState, error) {
+				return &pb.NodeState{}, nil
+			},
 		}, nil,
 	)
 
@@ -325,13 +337,15 @@ func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
 
 func (s *GTEServerTestSuite) TestGetNodes_Panic() {
 	msg := "panic msg"
-	s.stateGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, fields []string) (*pb.NodeState, error) {
-			panic(msg)
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetStateFunc: func(node graph.Node, requiredFields []string) (*pb.NodeState, error) {
+				panic(msg)
+			},
 		}, nil,
 	)
 
-	s.storage.ExpectGetResponse(&factories.TypedNode{
+	s.storage.ExpectGetResponse(&adapters.TypedNode{
 		NodeType: "test",
 		Node: graph.NewTestNode(0, 0, true, func() error {
 			return nil
@@ -348,7 +362,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Panic() {
 
 func (s *GTEServerTestSuite) TestProcess_Success() {
 	s.storage.ExpectGetResponse(
-		&factories.TypedNode{
+		&adapters.TypedNode{
 			NodeType: "test",
 			Node: graph.NewTestNode(0, 0, true, func() error {
 				return nil
@@ -367,7 +381,7 @@ func (s *GTEServerTestSuite) TestProcess_Success() {
 func (s *GTEServerTestSuite) TestProcess_ProcessError() {
 	e := fmt.Errorf("process error")
 	s.storage.ExpectGetResponse(
-		&factories.TypedNode{
+		&adapters.TypedNode{
 			NodeType: "test",
 			Node: graph.NewTestNode(0, 0, true, func() error {
 				return e
@@ -401,7 +415,7 @@ func (s *GTEServerTestSuite) TestProcess_NodeNotFound() {
 
 func (s *GTEServerTestSuite) TestLink_Success() {
 	s.storage.ExpectGetResponse(
-		&factories.TypedNode{
+		&adapters.TypedNode{
 			NodeType: "test",
 			Node: graph.NewTestNode(0, 0, true, func() error {
 				return nil
@@ -410,7 +424,7 @@ func (s *GTEServerTestSuite) TestLink_Success() {
 	)
 
 	s.storage.ExpectGetResponse(
-		&factories.TypedNode{
+		&adapters.TypedNode{
 			NodeType: "test",
 			Node: graph.NewTestNode(0, 0, true, func() error {
 				return nil
@@ -418,15 +432,19 @@ func (s *GTEServerTestSuite) TestLink_Success() {
 		}, nil,
 	)
 
-	s.portGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, tag string) (graph.Port, error) {
-			return graph.NewAttachedPort(node.Node), nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetPortFunc: func(tag string, node graph.Node) (graph.Port, error) {
+				return graph.NewAttachedPort(node), nil
+			},
 		}, nil,
 	)
 
-	s.portGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, tag string) (graph.Port, error) {
-			return graph.NewAttachedPort(node.Node), nil
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetPortFunc: func(tag string, node graph.Node) (graph.Port, error) {
+				return graph.NewAttachedPort(node), nil
+			},
 		}, nil,
 	)
 
@@ -453,7 +471,7 @@ func (s *GTEServerTestSuite) TestLink_NodeNotFound() {
 
 func (s *GTEServerTestSuite) TestLink_GetterNotFound() {
 	s.storage.ExpectGetResponse(
-		&factories.TypedNode{
+		&adapters.TypedNode{
 			NodeType: "test",
 			Node: graph.NewTestNode(0, 0, true, func() error {
 				return nil
@@ -462,7 +480,7 @@ func (s *GTEServerTestSuite) TestLink_GetterNotFound() {
 	)
 
 	e := fmt.Errorf("err not found")
-	s.portGetterFactory.ExpectResponse(nil, e)
+	s.factory.ExpectResponse(nil, e)
 
 	r, err := s.server.Link(nil, s.getValidLinkRequest())
 	s.Require().Nil(err)
@@ -474,7 +492,7 @@ func (s *GTEServerTestSuite) TestLink_GetterNotFound() {
 
 func (s *GTEServerTestSuite) TestLink_PortGetterError() {
 	s.storage.ExpectGetResponse(
-		&factories.TypedNode{
+		&adapters.TypedNode{
 			NodeType: "test",
 			Node: graph.NewTestNode(0, 0, true, func() error {
 				return nil
@@ -483,9 +501,11 @@ func (s *GTEServerTestSuite) TestLink_PortGetterError() {
 	)
 
 	e := fmt.Errorf("err not found")
-	s.portGetterFactory.ExpectResponse(
-		func(node *factories.TypedNode, tag string) (graph.Port, error) {
-			return nil, e
+	s.factory.ExpectResponse(
+		mocks.NodeAdapterMock{
+			GetPortFunc: func(tag string, node graph.Node) (graph.Port, error) {
+				return nil, e
+			},
 		}, nil,
 	)
 

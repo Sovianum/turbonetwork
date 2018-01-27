@@ -3,7 +3,7 @@ package server
 import (
 	"github.com/stretchr/testify/suite"
 	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"testing"
 )
 
@@ -17,7 +17,7 @@ func (s *NodeStorageTestSuite) SetupTest() {
 }
 
 func (s *NodeStorageTestSuite) TestAdd() {
-	id, err := s.storage.Add(factories.NewTypedNode(
+	id, err := s.storage.Add(adapters.NewTypedNode(
 		graph.NewTestNode(0, 0, true, nil),
 		"test",
 	))
@@ -28,7 +28,7 @@ func (s *NodeStorageTestSuite) TestAdd() {
 }
 
 func (s *NodeStorageTestSuite) TestDelete() {
-	id, err := s.storage.Add(factories.NewTypedNode(
+	id, err := s.storage.Add(adapters.NewTypedNode(
 		graph.NewTestNode(0, 0, true, nil),
 		"test",
 	))
@@ -41,7 +41,7 @@ func (s *NodeStorageTestSuite) TestDelete() {
 func (s *NodeStorageTestSuite) TestGet() {
 	inputNode := graph.NewTestNode(0, 0, true, nil)
 
-	id, err := s.storage.Add(factories.NewTypedNode(inputNode, "test"))
+	id, err := s.storage.Add(adapters.NewTypedNode(inputNode, "test"))
 
 	s.Require().Nil(err)
 
