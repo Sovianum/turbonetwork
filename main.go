@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Sovianum/turbonetwork/nodeservice/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/factories"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -32,7 +32,7 @@ func main() {
 
 	client := pb.NewNodeServiceClient(conn)
 
-	createReq, _ := server.GetCreateRequest([]string{"node"}, []string{factories.PressureLossNodeType}, []map[string]float64{
+	createReq, _ := server.GetCreateRequest([]string{"node"}, []string{adapters.PressureLossNodeType}, []map[string]float64{
 		{"sigma": 1},
 	})
 	resp, err := client.CreateNodes(context.Background(), createReq)

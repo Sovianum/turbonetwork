@@ -1,0 +1,100 @@
+syntax = "proto3";
+package networkservice;
+option go_package="pb";
+import "node_service.proto";
+
+service NetworkService {
+    rpc CreateNetwork(CreateRequest) returns (ModifyResponse) {};
+    rpc UpdateNetwork(UpdateRequest) returns (ModifyResponse) {};
+    rpc DeleteNetwork(NetworkIdentifier) returns (ModifyResponse) {};
+    rpc Process(ProcessRequest) returns (ModifyResponse) {};
+    rpc Solve(SolveRequest) returns (ModifyResponse) {};
+    rpc GetState(GetStateRequest) returns (StateResponse) {};
+    rpc GetDescription(nodeservice.Empty) returns (NetworkDescription) {};
+}
+
+message NetworkDescription {
+    repeated nodeservice.ServiceDescription items = 1;
+}
+
+message StateResponse {
+    map<string, nodeservice.NodeState> states = 1;
+}
+
+message ModifyResponse {
+    BaseResponse base = 1;
+    NetworkIdentifier identifier = 2;
+}
+
+message BaseResponse {
+    int32 status = 1;
+    string description = 2;
+    repeated string messages = 3;
+}
+
+message GetStateRequest {
+    repeated string requiredNodes = 1;
+}
+
+message SolveRequest {
+    NetworkIdentifier identifier = 1;
+    PortIdentifier vectorPotrt = 2;
+    SolutionOptions solutionOptions = 3;
+}
+
+message ProcessRequest {
+    NetworkIdentifier identifier = 1;
+    ProcessOptions processOptions = 2;
+}
+
+message SolutionOptions {
+    SolverTypes solverType = 1;
+    repeated double init = 2;
+    double precision = 3;
+    double relaxCoef = 4;
+    int32 iterLimit = 5;
+
+    ProcessOptions processOptions = 6;
+
+    enum SolverTypes {
+        NEWTON = 0;
+    }
+}
+
+message ProcessOptions {
+    double relaxCoef = 1;
+    double precision = 4;
+    int32 skipIterations = 2;
+    int32 iterNum = 3;
+}
+
+message UpdateRequest {
+    NetworkIdentifier identifier = 1;
+    map<string, nodeservice.RequestData> nodeUpdates = 2;
+}
+
+message CreateRequest {
+    map<string, nodeservice.RequestData> nodeRequests = 1;
+    repeated LinkRequest linkRequests = 2;
+    repeated VariatorIdentifier variators = 3;
+}
+
+message LinkRequest {
+    PortIdentifier id1 = 1;
+    PortIdentifier id2 = 2;
+    nodeservice.LinkType linkType = 3;
+}
+
+message VariatorIdentifier {
+    string nodeName = 1;
+    string variableName = 2;
+}
+
+message PortIdentifier {
+    string nodeName = 1;
+    string portTag = 2;
+}
+
+message NetworkIdentifier {
+    int32 id = 1;
+}
