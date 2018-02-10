@@ -89,6 +89,270 @@ func TestCheckContextStates(t *testing.T) {
 	assert.Nil(t, errs)
 }
 
+func TestRepresentationNode_getNodeMirrorContextState(t *testing.T) {
+	nodeTmp, _ := NewRepresentationNode(get2In1Out(), nil)
+	node := nodeTmp.(*representationNode)
+	sA, _ := NewRepresentationNode(getSourceDescription(), nil)
+	sB, _ := NewRepresentationNode(getSourceDescription(), nil)
+	sC, _ := NewRepresentationNode(getSourceDescription(), nil)
+
+	mustLink(node, sA, portATag, outputTag)
+	mustLink(node, sB, portBTag, outputTag)
+	mustLink(node, sC, portCTag, outputTag)
+
+	m := getPrefixTypeMap(node.description.ContextStates[0])
+	assert.Equal(t, 3, len(m))
+
+	portA, _ := sA.GetPortByName(outputTag)
+	portB, _ := sB.GetPortByName(outputTag)
+	portC, _ := sC.GetPortByName(outputTag)
+
+	nodeState := node.getNodeMirrorContextState(m)
+
+	assert.Equal(t, pb.NodeDescription_AttachedPortDescription_INPUT, nodeState[portA])
+	assert.Equal(t, pb.NodeDescription_AttachedPortDescription_OUTPUT, nodeState[portB])
+	assert.Equal(t, pb.NodeDescription_AttachedPortDescription_OUTPUT, nodeState[portC])
+}
+
+func TestRepresentationNode_GetFilter(t *testing.T) {
+	nodeTmp, _ := NewRepresentationNode(get2In1Out(), nil)
+	node := nodeTmp.(*representationNode)
+	sA, _ := NewRepresentationNode(getSourceDescription(), nil)
+	sB, _ := NewRepresentationNode(getSourceDescription(), nil)
+	sC, _ := NewRepresentationNode(getSourceDescription(), nil)
+
+	mustLink(node, sA, portATag, outputTag)
+	mustLink(node, sB, portBTag, outputTag)
+	mustLink(node, sC, portCTag, outputTag)
+
+	f := node.GetFilter()
+
+	validStates := []*pb.NodeDescription_ContextState{
+		{
+			Ports: []*pb.NodeDescription_AttachedPortDescription{
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portATag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portBTag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portCTag,
+						IsMulti: false,
+					},
+				},
+			},
+		},
+		{
+			Ports: []*pb.NodeDescription_AttachedPortDescription{
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portATag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portBTag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portCTag,
+						IsMulti: false,
+					},
+				},
+			},
+		},
+		{
+			Ports: []*pb.NodeDescription_AttachedPortDescription{
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portATag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portBTag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portCTag,
+						IsMulti: false,
+					},
+				},
+			},
+		},
+	}
+	for i, state := range validStates {
+		m := getPrefixTypeMap(state)
+		ns := node.getNodeMirrorContextState(m)
+		assert.True(t, f.Validate(ns), "%d", i)
+	}
+
+	invalidStates := []*pb.NodeDescription_ContextState{
+		{
+			Ports: []*pb.NodeDescription_AttachedPortDescription{
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portATag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portBTag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portCTag,
+						IsMulti: false,
+					},
+				},
+			},
+		},
+		{
+			Ports: []*pb.NodeDescription_AttachedPortDescription{
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portATag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_OUTPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portBTag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portCTag,
+						IsMulti: false,
+					},
+				},
+			},
+		},
+		{
+			Ports: []*pb.NodeDescription_AttachedPortDescription{
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portATag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portBTag,
+						IsMulti: false,
+					},
+				},
+				{
+					Type: pb.NodeDescription_AttachedPortDescription_INPUT,
+					Description: &pb.PortDescription{
+						Prefix:  portCTag,
+						IsMulti: false,
+					},
+				},
+			},
+		},
+	}
+	for i, state := range invalidStates {
+		m := getPrefixTypeMap(state)
+		ns := node.getNodeMirrorContextState(m)
+		assert.False(t, f.Validate(ns), "%d", i)
+	}
+}
+
+func TestRepresentationNode_SelectState_Single(t *testing.T) {
+	nodeTmp, _ := NewRepresentationNode(get2In1Out(), nil)
+	node := nodeTmp.(*representationNode)
+	sA, _ := NewRepresentationNode(getSourceDescription(), nil)
+	sB, _ := NewRepresentationNode(getSourceDescription(), nil)
+	sC, _ := NewRepresentationNode(getSourceDescription(), nil)
+
+	mustLink(node, sA, portATag, outputTag)
+	mustLink(node, sB, portBTag, outputTag)
+	mustLink(node, sC, portCTag, outputTag)
+
+	f1 := All(sA.GetFilter(), sB.GetFilter())
+	node.FilterStates(f1)
+	assert.Equal(t, 1, len(node.selectedStates))
+
+	node.selectedStates = make([]NodePortState, 0)
+	f2 := All(sA.GetFilter(), sC.GetFilter())
+	node.FilterStates(f2)
+	assert.Equal(t, 1, len(node.selectedStates))
+
+	node.selectedStates = make([]NodePortState, 0)
+	f3 := All(sB.GetFilter(), sC.GetFilter())
+	node.FilterStates(f3)
+	assert.Equal(t, 1, len(node.selectedStates))
+}
+
+//func TestRepresentationNode_SelectState_Network(t *testing.T) {
+//	source1, _ := NewRepresentationNode(getSourceDescription(), nil)
+//	source2, _ := NewRepresentationNode(getSourceDescription(), nil)
+//	sink1, _ := NewRepresentationNode(getSinkDescription(), nil)
+//	sink2, _ := NewRepresentationNode(getSinkDescription(), nil)
+//
+//	c1, _ := NewRepresentationNode(get1In2Out(), nil)
+//	c2, _ := NewRepresentationNode(get1In2Out(), nil)
+//	b, _ := NewRepresentationNode(getBipoleDescription(), nil)
+//	t1, _ := NewRepresentationNode(get1In2Out(), nil)
+//	t2, _ := NewRepresentationNode(get2In1Out(), nil)
+//
+//	mustLink(source1, c1, outputTag, portATag)
+//	mustLink(c1, c2, portBTag, portATag)
+//	mustLink(c1, t1, portCTag, portCTag)
+//	mustLink(c2, b, portBTag, portATag)
+//	mustLink(c2, source2, portCTag, outputTag)
+//	mustLink(b, t2, portBTag, portATag)
+//	mustLink(t2, t1, portBTag, portATag)
+//	mustLink(sink1, t2, inputTag, portCTag)
+//	mustLink(t1, sink2, portBTag, inputTag)
+//
+//	f := All(
+//		source1.GetFilter(), source2.GetFilter(), sink1.GetFilter(), sink2.GetFilter(),
+//		c1.GetFilter(), c2.GetFilter(), b.GetFilter(), t1.GetFilter(), t2.GetFilter(),
+//	)
+//	assert.Nil(t, c1.SelectState(f))
+//	assert.Nil(t, c2.SelectState(f))
+//	assert.Nil(t, b.SelectState(f))
+//	assert.Nil(t, t1.SelectState(f))
+//	assert.Nil(t, t2.SelectState(f))
+//}
+
 func TestRepresentationNode_ContextDefined_Single_OK(t *testing.T) {
 	node, err := NewRepresentationNode(getSinkDescription(), nil)
 	assert.Nil(t, err)
@@ -176,11 +440,11 @@ func TestRepresentationNode_ContextDefined_Network_OK(t *testing.T) {
 	//assert.True(t, pSource.ContextDefined(0))
 	//assert.True(t, sink1.ContextDefined(0))
 
-	fmt.Println(describeReprNode(c1, "c1"))
-	fmt.Println(describeReprNode(c2, "c2"))
-	fmt.Println(describeReprNode(b, "b"))
-	fmt.Println(describeReprNode(t1, "t1"))
-	fmt.Println(describeReprNode(t2, "t2"))
+	//fmt.Println(describeReprNode(c1, "c1"))
+	//fmt.Println(describeReprNode(c2, "c2"))
+	//fmt.Println(describeReprNode(b, "b"))
+	//fmt.Println(describeReprNode(t1, "t1"))
+	//fmt.Println(describeReprNode(t2, "t2"))
 }
 
 //func TestRepresentationNode_ContextDefined_Network_Fail(t *testing.T) {
@@ -220,8 +484,14 @@ func TestRepresentationNode_ContextDefined_Network_OK(t *testing.T) {
 //}
 
 func mustLink(node1, node2 RepresentationNode, tag1, tag2 string) {
-	port1, _ := node1.GetPortByName(tag1)
-	port2, _ := node2.GetPortByName(tag2)
+	port1, err1 := node1.GetPortByName(tag1)
+	if err1 != nil {
+		panic(err1)
+	}
+	port2, err2 := node2.GetPortByName(tag2)
+	if err2 != nil {
+		panic(err2)
+	}
 	graph.Link(port1, port2)
 }
 

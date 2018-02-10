@@ -8,11 +8,15 @@ import (
 	"github.com/Sovianum/turbocycle/impl/engine/nodes"
 	"regexp"
 	"math/rand"
+	"github.com/Sovianum/turbocycle/common"
 )
 
 type RepresentationNode interface {
 	graph.Node
 	GetPortByName(portTag string) (graph.Port, error)
+	GetFilter() Filter
+	FilterStates(filter Filter) error
+	GetStateCount() int
 }
 
 func NewRepresentationNode(description adapters.NodeDescription, multiPortMap map[string]int) (RepresentationNode, error) {
@@ -62,6 +66,8 @@ func NewRepresentationNode(description adapters.NodeDescription, multiPortMap ma
 }
 
 type representationNode struct {
+	graph.BaseNode
+
 	description adapters.NodeDescription
 	ports []graph.Port
 
@@ -74,12 +80,13 @@ type representationNode struct {
 
 	contextMatchingStates  []*pb.NodeDescription_ContextState
 	contextState *pb.NodeDescription_ContextState
+
+	nodeStates []NodePortState
+	selectedStates []NodePortState
 }
 
-func (node *representationNode) SetName(name string) {}
-
 func (node *representationNode) GetName() string {
-	return "representationNode"
+	return common.EitherString(node.GetInstanceName(), "representationNode")
 }
 
 func (node *representationNode) Process() error {
@@ -151,17 +158,117 @@ func (node *representationNode) ContextDefined(key int) bool {
 	return foundMatching
 }
 
-func (node *representationNode) matchContextDefinition(contextState *pb.NodeDescription_ContextState) bool {
-	r := regexp.MustCompile("_[0-9]+$")
+func (node *representationNode) GetFilter() Filter {
+	var filters []Filter
 
-	getPrefix := func(s string) string {
-		i := r.Find([]byte(s))
-		if i == nil {
-			return s
-		}
-		return s[:i[0]]
+	if len(node.description.ContextStates) == 0 {
+		m := make(prefixTypeMap)
+		node.extendPrefixTypeMap(m)
+		nodeState := node.getNodeMirrorContextState(m)
+		return NewFilterFromState(nodeState)
 	}
 
+	for _, contextState := range node.description.ContextStates {
+		m := getPrefixTypeMap(contextState)
+		node.extendPrefixTypeMap(m)
+
+		nodeState := node.getNodeMirrorContextState(m)
+		f := NewFilterFromState(nodeState)
+		filters = append(filters, f)
+	}
+
+	return Any(filters...)
+}
+
+func (node *representationNode) FilterStates(filter Filter) error {
+	if len(node.nodeStates) == 0 {
+		node.initStates()
+	}
+	var states []NodePortState
+
+	if len(node.selectedStates) == 0 {
+		states = node.nodeStates
+	} else {
+		states = node.selectedStates
+	}
+
+	var selected []NodePortState
+	for _, ns := range states {
+		if filter.Validate(ns) {
+			selected = append(selected, ns)
+		}
+	}
+
+	if len(selected) == 0 {
+		return fmt.Errorf("no matching states found in %s", node.GetName())
+	}
+	node.selectedStates = selected
+	return nil
+}
+
+func (node *representationNode) GetStateCount() int {
+	if len(node.description.ContextStates) == 0 {
+		return 1
+	}
+
+	if len(node.nodeStates) == 0 {
+		node.initStates()
+	}
+	return len(node.nodeStates)
+}
+
+// extendPrefixTypeMap extends prefix map with base node info
+func (node *representationNode) extendPrefixTypeMap(m prefixTypeMap)  {
+	for _, state := range node.description.BasePorts {
+		if state.Type != pb.NodeDescription_AttachedPortDescription_CONTEXT_DEPENDENT {
+			m[state.Description.Prefix] = state.Type
+		}
+	}
+}
+
+func (node *representationNode) initStates() {
+	node.nodeStates = make([]NodePortState, 0)
+	for _, contextState := range node.description.ContextStates {
+		m := getPrefixTypeMap(contextState)
+		node.nodeStates = append(node.nodeStates, node.getNodeContextState(m))
+	}
+}
+
+func (node *representationNode) getNodeContextState(m prefixTypeMap) NodePortState {
+	result := make(NodePortState)
+
+	for portName, index := range node.portIndex {
+		port := node.ports[index]
+		prefix := getPrefix(portName)
+
+		if m[prefix] == pb.NodeDescription_AttachedPortDescription_INPUT ||
+			m[prefix] == pb.NodeDescription_AttachedPortDescription_OUTPUT {
+			result[port] = m[prefix]
+		}
+	}
+	return result
+}
+
+// getNodeMirrorContextState returns NodePortState out of link ports using prefixTypeMap constructed of on context state
+func (node *representationNode) getNodeMirrorContextState(m prefixTypeMap) NodePortState {
+	result := make(NodePortState)
+	
+	for portName, index := range node.portIndex {
+		linkPort := node.ports[index].GetLinkPort()
+		prefix := getPrefix(portName)
+		
+		// use mirror states cos switch is by type of port, but result is by link ports
+		switch m[prefix] {
+		case pb.NodeDescription_AttachedPortDescription_INPUT:
+			result[linkPort] = pb.NodeDescription_AttachedPortDescription_OUTPUT
+		case pb.NodeDescription_AttachedPortDescription_OUTPUT:
+			result[linkPort] = pb.NodeDescription_AttachedPortDescription_INPUT
+		}
+	}
+	return result
+}
+
+func (node *representationNode) matchContextDefinition(contextState *pb.NodeDescription_ContextState) bool {
 	stateMap := make(map[string]bool)
 	for _, state := range contextState.Ports {
 		if state.Type == pb.NodeDescription_AttachedPortDescription_INPUT {
@@ -209,20 +316,6 @@ func (node *representationNode) matchDataFlowDirection(contextState *pb.NodeDesc
 
 			isSource, sourceErr := nodes.IsDataSource(port)
 			if sourceErr != nil || !isSource {
-				return false
-			}
-		}
-	}
-
-	if len(updatedPorts) > 0 {
-		for _, updated := range updatedPorts {
-			port, portErr := node.getPortByName(updated.Description.Prefix)
-			if portErr != nil {
-				return false
-			}
-
-			isSink, sourceErr := nodes.IsDataSink(port)
-			if sourceErr != nil || !isSink {
 				return false
 			}
 		}
@@ -370,3 +463,23 @@ func rootKey(key int) bool {
 func newKey() int {
 	return rand.Int() / 2 + 10
 }
+
+type prefixTypeMap map[string]pb.NodeDescription_AttachedPortDescription_PortType
+
+func getPrefixTypeMap(contextState *pb.NodeDescription_ContextState) prefixTypeMap {
+	result := make(prefixTypeMap)
+	for _, state := range contextState.Ports {
+		result[state.Description.Prefix] = state.Type
+	}
+	return result
+}
+
+func getPrefix(s string) string {
+	i := prefixMatcher.Find([]byte(s))
+	if i == nil {
+		return s
+	}
+	return s[:i[0]]
+}
+
+var prefixMatcher = regexp.MustCompile("_[0-9]+$")
