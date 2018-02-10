@@ -1,22 +1,26 @@
-package networkservice
+package repr
 
 import (
-	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"fmt"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
-	"github.com/Sovianum/turbocycle/impl/engine/nodes"
-	"regexp"
-	"math/rand"
 	"github.com/Sovianum/turbocycle/common"
+	"github.com/Sovianum/turbocycle/core/graph"
+	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
+	"regexp"
 )
+
+type connType = pb.NodeDescription_AttachedPortDescription_PortType
+
+type portDescription struct {
+	baseID int
+	contextIDs []int
+}
 
 type RepresentationNode interface {
 	graph.Node
 	GetPortByName(portTag string) (graph.Port, error)
-	GetFilter() Filter
-	FilterStates(filter Filter) error
-	GetStateCount() int
+	GetConnectionLines() []map[graph.Port]connType
+	SelectState(stateID int) error
 }
 
 func NewRepresentationNode(description adapters.NodeDescription, multiPortMap map[string]int) (RepresentationNode, error) {
@@ -30,11 +34,13 @@ func NewRepresentationNode(description adapters.NodeDescription, multiPortMap ma
 	}
 
 	result := &representationNode{
-		description:description,
-		ports:make([]graph.Port, len(description.BasePorts)),
-		requirePorts:make([]graph.Port, 0),
-		updatePorts:make([]graph.Port, 0),
-		portIndex:make(map[string]int),
+		description:  description,
+		ports:        make([]graph.Port, len(description.BasePorts)),
+		requirePorts: make([]graph.Port, 0),
+		updatePorts:  make([]graph.Port, 0),
+		portIndex:    make(map[string]int),
+		descriptionIndex: make(map[graph.Port]portDescription),
+
 	}
 
 	for i, basePortDescription := range description.BasePorts {
@@ -62,6 +68,10 @@ func NewRepresentationNode(description adapters.NodeDescription, multiPortMap ma
 		}
 	}
 
+	for portName, ind := range result.portIndex {
+		result.descriptionIndex[result.ports[ind]] = getPortDescription(portName, description)
+	}
+
 	return result, nil
 }
 
@@ -69,20 +79,12 @@ type representationNode struct {
 	graph.BaseNode
 
 	description adapters.NodeDescription
-	ports []graph.Port
+	ports       []graph.Port
 
-	portIndex map[string]int
+	portIndex    map[string]int
+	descriptionIndex map[graph.Port]portDescription
 	requirePorts []graph.Port
-	updatePorts []graph.Port
-
-	contextDefined bool
-	contextCallKey int
-
-	contextMatchingStates  []*pb.NodeDescription_ContextState
-	contextState *pb.NodeDescription_ContextState
-
-	nodeStates []NodePortState
-	selectedStates []NodePortState
+	updatePorts  []graph.Port
 }
 
 func (node *representationNode) GetName() string {
@@ -90,25 +92,7 @@ func (node *representationNode) GetName() string {
 }
 
 func (node *representationNode) Process() error {
-	var matchStates []*pb.NodeDescription_ContextState
-	var indices []int
-
-	for i, state := range node.contextMatchingStates {
-		if node.matchDataFlowDirection(state) {
-			matchStates = append(matchStates, state)
-			indices = append(indices, i)
-		}
-	}
-
-	switch len(matchStates) {
-	case 0:
-		return fmt.Errorf("matching state not found")
-	case 1:
-		node.contextState = matchStates[0]
-		return nil
-	default:
-		return fmt.Errorf("found multiple matching states %v", indices)
-	}
+	return nil
 }
 
 func (node *representationNode) GetRequirePorts() ([]graph.Port, error) {
@@ -128,200 +112,62 @@ func (node *representationNode) GetPortByName(portTag string) (graph.Port, error
 }
 
 func (node *representationNode) ContextDefined(key int) bool {
-	if len(node.description.ContextStates) == 0 {
-		return true
-	}
-	if node.contextDefined {
-		return true
-	}
-
-	if !rootKey(key) {
-		if node.contextCallKey == key {
-			return node.contextDefined
-		}
-		node.contextCallKey = key
-	}
-
-	node.contextMatchingStates = make([]*pb.NodeDescription_ContextState, 0)
-	foundMatching := false
-	for _, contextState := range node.description.ContextStates {
-		if rootKey(key) {
-			node.contextCallKey = newKey()
-		}
-
-		if node.matchContextDefinition(contextState) {
-			foundMatching = true
-			node.contextMatchingStates = append(node.contextMatchingStates, contextState)
-		}
-	}
-	//return len(node.contextMatchingStates) != 0
-	return foundMatching
+	return true
 }
 
-func (node *representationNode) GetFilter() Filter {
-	var filters []Filter
-
-	if len(node.description.ContextStates) == 0 {
-		m := make(prefixTypeMap)
-		node.extendPrefixTypeMap(m)
-		nodeState := node.getNodeMirrorContextState(m)
-		return NewFilterFromState(nodeState)
-	}
-
-	for _, contextState := range node.description.ContextStates {
-		m := getPrefixTypeMap(contextState)
-		node.extendPrefixTypeMap(m)
-
-		nodeState := node.getNodeMirrorContextState(m)
-		f := NewFilterFromState(nodeState)
-		filters = append(filters, f)
-	}
-
-	return Any(filters...)
-}
-
-func (node *representationNode) FilterStates(filter Filter) error {
-	if len(node.nodeStates) == 0 {
-		node.initStates()
-	}
-	var states []NodePortState
-
-	if len(node.selectedStates) == 0 {
-		states = node.nodeStates
+func (node *representationNode) GetConnectionLines() []map[graph.Port]connType {
+	var resultLength int
+	if cl := len(node.description.ContextStates); cl == 0 {
+		resultLength = 1
 	} else {
-		states = node.selectedStates
+		resultLength = cl
 	}
 
-	var selected []NodePortState
-	for _, ns := range states {
-		if filter.Validate(ns) {
-			selected = append(selected, ns)
+	result := make([]map[graph.Port]connType, resultLength)
+	for i := range result{
+		// it is safe to pass i to getConnectionLine even for context independent nodes
+		// cos it won't be used
+		result[i] = node.getConnectionLine(i)
+	}
+	return result
+}
+
+func (node *representationNode) SelectState(stateID int) error {
+	if l := len(node.description.ContextStates); l == 0 {
+		return nil
+	} else if l <= stateID {
+		return fmt.Errorf("stateID out of range")
+	}
+
+	state := node.description.ContextStates[stateID]
+	for _, pd := range state.Ports {
+		// it is safe to extract port by prefix cos
+		// context dependent multiport is prohibited
+		port := node.ports[node.portIndex[pd.Description.Prefix]]
+		switch pd.Type {
+		case pb.NodeDescription_AttachedPortDescription_INPUT:
+			node.requirePorts = append(node.requirePorts, port)
+		case pb.NodeDescription_AttachedPortDescription_OUTPUT:
+			node.updatePorts = append(node.updatePorts, port)
 		}
 	}
-
-	if len(selected) == 0 {
-		return fmt.Errorf("no matching states found in %s", node.GetName())
-	}
-	node.selectedStates = selected
 	return nil
 }
 
-func (node *representationNode) GetStateCount() int {
-	if len(node.description.ContextStates) == 0 {
-		return 1
-	}
+func (node *representationNode) getConnectionLine(contextID int) map[graph.Port]connType {
+	result := make(map[graph.Port]connType)
+	for _, ind := range node.portIndex {
+		port := node.ports[ind]
 
-	if len(node.nodeStates) == 0 {
-		node.initStates()
-	}
-	return len(node.nodeStates)
-}
-
-// extendPrefixTypeMap extends prefix map with base node info
-func (node *representationNode) extendPrefixTypeMap(m prefixTypeMap)  {
-	for _, state := range node.description.BasePorts {
-		if state.Type != pb.NodeDescription_AttachedPortDescription_CONTEXT_DEPENDENT {
-			m[state.Description.Prefix] = state.Type
+		d := node.descriptionIndex[port]
+		connType := node.description.BasePorts[d.baseID].Type
+		if len(d.contextIDs) > 0 {
+			connType = node.description.ContextStates[contextID].Ports[d.contextIDs[contextID]].Type
 		}
-	}
-}
 
-func (node *representationNode) initStates() {
-	node.nodeStates = make([]NodePortState, 0)
-	for _, contextState := range node.description.ContextStates {
-		m := getPrefixTypeMap(contextState)
-		node.nodeStates = append(node.nodeStates, node.getNodeContextState(m))
-	}
-}
-
-func (node *representationNode) getNodeContextState(m prefixTypeMap) NodePortState {
-	result := make(NodePortState)
-
-	for portName, index := range node.portIndex {
-		port := node.ports[index]
-		prefix := getPrefix(portName)
-
-		if m[prefix] == pb.NodeDescription_AttachedPortDescription_INPUT ||
-			m[prefix] == pb.NodeDescription_AttachedPortDescription_OUTPUT {
-			result[port] = m[prefix]
-		}
+		result[port] = connType
 	}
 	return result
-}
-
-// getNodeMirrorContextState returns NodePortState out of link ports using prefixTypeMap constructed of on context state
-func (node *representationNode) getNodeMirrorContextState(m prefixTypeMap) NodePortState {
-	result := make(NodePortState)
-	
-	for portName, index := range node.portIndex {
-		linkPort := node.ports[index].GetLinkPort()
-		prefix := getPrefix(portName)
-		
-		// use mirror states cos switch is by type of port, but result is by link ports
-		switch m[prefix] {
-		case pb.NodeDescription_AttachedPortDescription_INPUT:
-			result[linkPort] = pb.NodeDescription_AttachedPortDescription_OUTPUT
-		case pb.NodeDescription_AttachedPortDescription_OUTPUT:
-			result[linkPort] = pb.NodeDescription_AttachedPortDescription_INPUT
-		}
-	}
-	return result
-}
-
-func (node *representationNode) matchContextDefinition(contextState *pb.NodeDescription_ContextState) bool {
-	stateMap := make(map[string]bool)
-	for _, state := range contextState.Ports {
-		if state.Type == pb.NodeDescription_AttachedPortDescription_INPUT {
-			stateMap[state.Description.Prefix] = true
-		}
-	}
-
-	for portName, index := range node.portIndex {
-		prefix := getPrefix(portName)
-		if _, ok := stateMap[prefix]; ok {
-			outerNode := node.ports[index].GetOuterNode()
-			if outerNode == nil {
-				return false
-			}
-			if !outerNode.ContextDefined(node.contextCallKey) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func (node *representationNode) matchDataFlowDirection(contextState *pb.NodeDescription_ContextState) bool {
-	var requiredPorts []*pb.NodeDescription_AttachedPortDescription
-	var updatedPorts []*pb.NodeDescription_AttachedPortDescription
-	for _, port := range contextState.Ports {
-		switch port.Type {
-		case pb.NodeDescription_AttachedPortDescription_INPUT:
-			requiredPorts = append(requiredPorts, port)
-		case pb.NodeDescription_AttachedPortDescription_OUTPUT:
-			updatedPorts = append(updatedPorts, port)
-		}
-	}
-
-	if len(requiredPorts) == 0 && len(updatedPorts) == 0 {
-		return true
-	}
-
-	if len(requiredPorts) > 0 {
-		for _, required := range requiredPorts {
-			port, portErr := node.getPortByName(required.Description.Prefix)
-			if portErr != nil {
-				return false
-			}
-
-			isSource, sourceErr := nodes.IsDataSource(port)
-			if sourceErr != nil || !isSource {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 func (node *representationNode) getPortByName(portTag string) (graph.Port, error) {
@@ -330,6 +176,31 @@ func (node *representationNode) getPortByName(portTag string) (graph.Port, error
 	} else {
 		return node.ports[index], nil
 	}
+}
+
+func getPortDescription(portName string, nodeDescription adapters.NodeDescription) portDescription {
+	result := portDescription{}
+	prefix := getPrefix(portName)
+	var portType pb.NodeDescription_AttachedPortDescription_PortType
+
+	for i, bd := range nodeDescription.BasePorts {
+		if bd.Description.Prefix == prefix {
+			result.baseID = i
+			portType = bd.Type
+		}
+	}
+
+	if portType == pb.NodeDescription_AttachedPortDescription_CONTEXT_DEPENDENT {
+		result.contextIDs = make([]int, len(nodeDescription.ContextStates))
+		for i, cd := range nodeDescription.ContextStates {
+			for j, pd := range cd.Ports {
+				if pd.Description.Prefix == prefix {
+					result.contextIDs[i] = j
+				}
+			}
+		}
+	}
+	return result
 }
 
 func checkArgs(description adapters.NodeDescription, multiPortMap map[string]int) error {
@@ -453,24 +324,6 @@ func joinErrors(errors []error) string {
 		result += err.Error() + "; "
 	}
 	result += "]"
-	return result
-}
-
-func rootKey(key int) bool {
-	return key <= 0
-}
-
-func newKey() int {
-	return rand.Int() / 2 + 10
-}
-
-type prefixTypeMap map[string]pb.NodeDescription_AttachedPortDescription_PortType
-
-func getPrefixTypeMap(contextState *pb.NodeDescription_ContextState) prefixTypeMap {
-	result := make(prefixTypeMap)
-	for _, state := range contextState.Ports {
-		result[state.Description.Prefix] = state.Type
-	}
 	return result
 }
 
