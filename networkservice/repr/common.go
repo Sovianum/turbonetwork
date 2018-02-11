@@ -1,6 +1,6 @@
-package configuration
+package repr
 
-func GetVariants(limits []int) [][]int {
+func getVariants(limits []int) [][]int {
 	total := 1
 	for _, limit := range limits {
 		total *= limit
@@ -12,12 +12,12 @@ func GetVariants(limits []int) [][]int {
 	for i := 0; i != total; i++ {
 		result[i] = make([]int, len(limits))
 
-		for j := range limits{
+		for j := range limits {
 			incNum := 0
 			if j == 0 {
 				incNum = i
 			} else {
-				incNum = i / dimensions[j - 1]
+				incNum = i / dimensions[j-1]
 			}
 			result[i][j] = incNum % limits[j]
 		}

@@ -5,12 +5,11 @@ import (
 	"github.com/Sovianum/turbonetwork/pb"
 )
 
-type NodeDescription = *pb.NodeDescription
-
+// NodeAdapter implements base operations which are necessary to plug node to the total network
 type NodeAdapter interface {
 	Create(data *pb.RequestData) (graph.Node, error)
 	Update(node graph.Node, data *pb.RequestData) error
 	GetState(node graph.Node, requiredFields []string) (*pb.NodeState, error)
 	GetPort(tag string, node graph.Node) (graph.Port, error)
-	GetDescription() NodeDescription
+	GetDescription() *pb.NodeDescription
 }

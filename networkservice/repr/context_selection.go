@@ -1,17 +1,16 @@
 package repr
 
 import (
-	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/networkservice/configuration"
-	"github.com/Sovianum/turbonetwork/pb"
 	"fmt"
+	"github.com/Sovianum/turbocycle/core/graph"
+	"github.com/Sovianum/turbonetwork/pb"
 )
 
 func newContextSelector(nodes []RepresentationNode) *contextSelector {
 	result := new(contextSelector)
 	result.nodes = nodes
 	result.portIndex = result.makePortIndex(nodes)
-	result.connMatrix = configuration.NewIntMatrix(len(result.portIndex), len(result.portIndex))
+	result.connMatrix = newIntMatrix(len(result.portIndex), len(result.portIndex))
 
 	for i := 0; i != len(result.portIndex); i++ {
 		for j := 0; j != len(result.portIndex); j++ {
@@ -32,7 +31,7 @@ func newContextSelector(nodes []RepresentationNode) *contextSelector {
 
 type contextSelector struct {
 	portIndex   map[graph.Port]int
-	connMatrix  configuration.IntMatrix
+	connMatrix  *intMatrix
 	connConfigs [][]map[graph.Port]connType
 	nodes       []RepresentationNode
 }
@@ -60,7 +59,7 @@ func (cs *contextSelector) findValidConfigurations() [][]int {
 		limits[i] = len(c)
 	}
 
-	variantSelectors := configuration.GetVariants(limits)
+	variantSelectors := getVariants(limits)
 	var result [][]int
 	for _, selector := range variantSelectors {
 		variant := make([]map[graph.Port]connType, len(selector))
@@ -79,7 +78,7 @@ func (cs *contextSelector) checkGraphMatrix(variant []map[graph.Port]connType) b
 	for _, line := range variant {
 		cs.updateConnMatrix(line)
 	}
-	return configuration.ValidateConnMatrix(cs.connMatrix, configuration.DefaultValidator)
+	return validateConnMatrix(cs.connMatrix, defaultValidator)
 }
 
 func (cs *contextSelector) updateConnMatrix(connLine map[graph.Port]connType) {

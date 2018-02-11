@@ -1,11 +1,11 @@
 package repr
 
 import (
+	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/Sovianum/turbonetwork/pb"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
-	"github.com/Sovianum/turbocycle/core/graph"
 )
 
 const (
@@ -239,7 +239,6 @@ func TestRepresentationNode_ContextDefined_Network_OK(t *testing.T) {
 	mustLink(t2, t1, portBTag, portATag)
 	mustLink(sink2, t2, inputTag, portCTag)
 	mustLink(t1, sink3, portBTag, inputTag)
-
 
 	//assert.True(t, source1.ContextDefined(0))
 	//assert.True(t, c1.ContextDefined(0))

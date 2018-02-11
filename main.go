@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	ns "github.com/Sovianum/turbonetwork/nodeservice"
+	"github.com/Sovianum/turbonetwork/nodeservice/adapters"
 	"github.com/Sovianum/turbonetwork/pb"
-	"github.com/Sovianum/turbonetwork/nodeservice/server"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -20,7 +20,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	gteServer := server.NewGTEServer(nil)
+	gteServer := ns.NewGTEServer(nil)
 
 	pb.RegisterNodeServiceServer(grpcServer, gteServer)
 	go grpcServer.Serve(lis)
@@ -32,7 +32,7 @@ func main() {
 
 	client := pb.NewNodeServiceClient(conn)
 
-	createReq, _ := server.GetCreateRequest([]string{"node"}, []string{adapters.PressureLossNodeType}, []map[string]float64{
+	createReq, _ := ns.GetCreateRequest([]string{"node"}, []string{adapters.PressureLossNodeType}, []map[string]float64{
 		{"sigma": 1},
 	})
 	resp, err := client.CreateNodes(context.Background(), createReq)
@@ -42,7 +42,7 @@ func main() {
 	log.Printf("Succeeded %v", *resp)
 
 	resp1, err1 := client.Process(context.Background(), &pb.Identifiers{
-		Ids:[]*pb.NodeIdentifier{resp.Items[0].Identifiers[0]},
+		Ids: []*pb.NodeIdentifier{resp.Items[0].Identifiers[0]},
 	})
 	if err1 != nil {
 		log.Fatalf("Failed to get response: %s", err1.Error())

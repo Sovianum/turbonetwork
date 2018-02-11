@@ -1,21 +1,21 @@
-package server
+package nodeservice
 
 import (
-	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/pb"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/mocks"
-	"github.com/stretchr/testify/suite"
-	"testing"
 	"fmt"
+	"github.com/Sovianum/turbocycle/core/graph"
+	"github.com/Sovianum/turbonetwork/nodeservice/adapters"
+	"github.com/Sovianum/turbonetwork/nodeservice/mocks"
+	"github.com/Sovianum/turbonetwork/pb"
+	"github.com/stretchr/testify/suite"
 	"strings"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
+	"testing"
 )
 
 type GTEServerTestSuite struct {
 	suite.Suite
 	server *gteServer
 
-	storage            *mocks.NodeStorageMock
+	storage *mocks.NodeStorageMock
 	factory *mocks.NodeAdapterFactoryMock
 }
 
@@ -48,7 +48,7 @@ func (s *GTEServerTestSuite) TestCreateNodes_Success() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(OK, response.Items[0].Base.Status)
+	s.EqualValues(ok, response.Items[0].Base.Status)
 	s.EqualValues(1, response.Items[0].Identifiers[0].Id)
 }
 
@@ -61,7 +61,7 @@ func (s *GTEServerTestSuite) TestCreateNodes_ConstructorNotFound() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(notFound, response.Items[0].Base.Status)
 	s.Equal(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -80,7 +80,7 @@ func (s *GTEServerTestSuite) TestCreateNodes_ConstructorErr() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(InternalError, response.Items[0].Base.Status)
+	s.EqualValues(internalError, response.Items[0].Base.Status)
 	s.Equal(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -103,7 +103,7 @@ func (s *GTEServerTestSuite) TestCreateNodes_StorageAddError() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(InternalError, response.Items[0].Base.Status)
+	s.EqualValues(internalError, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -122,7 +122,7 @@ func (s *GTEServerTestSuite) TestCreateNodes_Panic() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(0, len(response.Items))
-	s.EqualValues(InternalError, response.Base.Status)
+	s.EqualValues(internalError, response.Base.Status)
 	s.True(strings.HasPrefix(response.Base.Description, msg))
 }
 
@@ -147,7 +147,7 @@ func (s *GTEServerTestSuite) TestUpdateNodes_Success() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(OK, response.Items[0].Base.Status)
+	s.EqualValues(ok, response.Items[0].Base.Status)
 	s.EqualValues(1, response.Items[0].Identifiers[0].Id)
 }
 
@@ -168,7 +168,7 @@ func (s *GTEServerTestSuite) TestUpdateNodes_NodeNotFound() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(notFound, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -194,7 +194,7 @@ func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterNotFound() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(notFound, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -220,7 +220,7 @@ func (s *GTEServerTestSuite) TestUpdateNodes_UpdaterFailed() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(InternalError, response.Items[0].Base.Status)
+	s.EqualValues(internalError, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -232,7 +232,7 @@ func (s *GTEServerTestSuite) TestDeleteNodes_Success() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(OK, response.Items[0].Base.Status)
+	s.EqualValues(ok, response.Items[0].Base.Status)
 	s.EqualValues(1, response.Items[0].Identifiers[0].Id)
 }
 
@@ -245,7 +245,7 @@ func (s *GTEServerTestSuite) TestDelete_NotFound() {
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
 
-	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(notFound, response.Items[0].Base.Status)
 }
 
 func (s *GTEServerTestSuite) TestGetNodes_Success() {
@@ -268,7 +268,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Success() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(OK, response.Items[0].Base.Status)
+	s.EqualValues(ok, response.Items[0].Base.Status)
 	s.EqualValues(1, response.Items[0].Identifier.Id)
 }
 
@@ -286,7 +286,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterNotFound() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(notFound, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -311,7 +311,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(InternalError, response.Items[0].Base.Status)
+	s.EqualValues(internalError, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -331,7 +331,7 @@ func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
-	s.EqualValues(NotFound, response.Items[0].Base.Status)
+	s.EqualValues(notFound, response.Items[0].Base.Status)
 	s.EqualValues(e.Error(), response.Items[0].Base.Description)
 }
 
@@ -356,7 +356,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Panic() {
 
 	s.Require().Nil(err)
 	s.Require().Equal(0, len(response.Items))
-	s.EqualValues(InternalError, response.Base.Status)
+	s.EqualValues(internalError, response.Base.Status)
 	s.True(strings.HasPrefix(response.Base.Description, msg))
 }
 
@@ -375,7 +375,7 @@ func (s *GTEServerTestSuite) TestProcess_Success() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(OK, r.Items[0].Base.Status)
+	s.EqualValues(ok, r.Items[0].Base.Status)
 }
 
 func (s *GTEServerTestSuite) TestProcess_ProcessError() {
@@ -394,7 +394,7 @@ func (s *GTEServerTestSuite) TestProcess_ProcessError() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(InternalError, r.Items[0].Base.Status)
+	s.EqualValues(internalError, r.Items[0].Base.Status)
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
@@ -409,7 +409,7 @@ func (s *GTEServerTestSuite) TestProcess_NodeNotFound() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(notFound, r.Items[0].Base.Status)
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
@@ -452,7 +452,7 @@ func (s *GTEServerTestSuite) TestLink_Success() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(OK, r.Items[0].Base.Status)
+	s.EqualValues(ok, r.Items[0].Base.Status)
 	s.EqualValues(1, r.Items[0].Identifiers[0].Id)
 	s.EqualValues(2, r.Items[0].Identifiers[1].Id)
 }
@@ -465,7 +465,7 @@ func (s *GTEServerTestSuite) TestLink_NodeNotFound() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(notFound, r.Items[0].Base.Status)
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
@@ -486,7 +486,7 @@ func (s *GTEServerTestSuite) TestLink_GetterNotFound() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(notFound, r.Items[0].Base.Status)
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
@@ -513,14 +513,14 @@ func (s *GTEServerTestSuite) TestLink_PortGetterError() {
 	s.Require().Nil(err)
 
 	s.Require().Equal(1, len(r.Items))
-	s.EqualValues(NotFound, r.Items[0].Base.Status)
+	s.EqualValues(notFound, r.Items[0].Base.Status)
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
 func (s *GTEServerTestSuite) getValidGetStateRequest() *pb.NodeStateRequest {
 	ids := s.getNodeIdentifiers(1)
 	result := &pb.NodeStateRequest{
-		Items:make([]*pb.NodeStateRequest_UnitRequest, 0),
+		Items: make([]*pb.NodeStateRequest_UnitRequest, 0),
 	}
 
 	for _, id := range ids.Ids {
@@ -535,15 +535,15 @@ func (s *GTEServerTestSuite) getValidGetStateRequest() *pb.NodeStateRequest {
 func (s *GTEServerTestSuite) getValidLinkRequest() *pb.LinkRequest {
 	nodeIds := s.getNodeIdentifiers(1, 2)
 	return &pb.LinkRequest{
-		Items:[]*pb.LinkRequest_UnitRequest{
+		Items: []*pb.LinkRequest_UnitRequest{
 			{
-				Id1:&pb.PortIdentifier{
-					NodeIdentifier:nodeIds.Ids[0],
-					PortTag:"port",
+				Id1: &pb.PortIdentifier{
+					NodeIdentifier: nodeIds.Ids[0],
+					PortTag:        "port",
 				},
-				Id2:&pb.PortIdentifier{
-					NodeIdentifier:nodeIds.Ids[1],
-					PortTag:"port",
+				Id2: &pb.PortIdentifier{
+					NodeIdentifier: nodeIds.Ids[1],
+					PortTag:        "port",
 				},
 			},
 		},
@@ -568,9 +568,9 @@ func (s *GTEServerTestSuite) getValidUpdateRequest() *pb.NodeUpdateRequest {
 }
 
 func (s *GTEServerTestSuite) getNodeIdentifiers(ids ...int32) *pb.Identifiers {
-	result := &pb.Identifiers{Ids:make([]*pb.NodeIdentifier, len(ids))}
+	result := &pb.Identifiers{Ids: make([]*pb.NodeIdentifier, len(ids))}
 	for i, id := range ids {
-		result.Ids[i] = &pb.NodeIdentifier{Id:id}
+		result.Ids[i] = &pb.NodeIdentifier{Id: id}
 	}
 	return result
 }

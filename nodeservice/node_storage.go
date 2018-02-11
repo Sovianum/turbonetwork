@@ -1,37 +1,40 @@
-package server
+package nodeservice
 
 import (
 	"github.com/Sovianum/turbonetwork/common"
+	"github.com/Sovianum/turbonetwork/nodeservice/adapters"
 	"github.com/Sovianum/turbonetwork/pb"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"sync"
 )
 
+// NodeStorage is a wrapper around ObjectStorage which also
+// automatically generates unique ids and casts TypedNode objects to and from interface{}
 type NodeStorage interface {
 	Add(node *adapters.TypedNode) (*pb.NodeIdentifier, error)
 	Get(id *pb.NodeIdentifier) (*adapters.TypedNode, error)
 	Drop(id *pb.NodeIdentifier) error
 }
 
+// NewMapNodeStorage creates NodeStorage based on map based ObjectStorage
 func NewMapNodeStorage() NodeStorage {
 	return &mapNodeStorage{
 		idCnt:         1,
-		mapLock:       sync.Mutex{},
+		idLock:        sync.Mutex{},
 		objectStorage: common.NewMapObjectStorage(),
 	}
 }
 
 type mapNodeStorage struct {
 	objectStorage common.ObjectStorage
-	mapLock       sync.Mutex
+	idLock        sync.Mutex
 	idCnt         int32
 }
 
 func (s *mapNodeStorage) Add(node *adapters.TypedNode) (*pb.NodeIdentifier, error) {
-	s.mapLock.Lock()
+	s.idLock.Lock()
 	id := pb.NodeIdentifier{Id: s.idCnt, NodeType: node.NodeType}
 	s.idCnt++
-	s.mapLock.Unlock()
+	s.idLock.Unlock()
 
 	if err := s.objectStorage.Add(id, node); err != nil {
 		return nil, err
@@ -41,11 +44,14 @@ func (s *mapNodeStorage) Add(node *adapters.TypedNode) (*pb.NodeIdentifier, erro
 }
 
 func (s *mapNodeStorage) Get(id *pb.NodeIdentifier) (*adapters.TypedNode, error) {
-	if val, err := s.objectStorage.Get(*id); err != nil {
+	var (
+		val interface{}
+		err error
+	)
+	if val, err = s.objectStorage.Get(*id); err != nil {
 		return nil, err
-	} else {
-		return val.(*adapters.TypedNode), nil
 	}
+	return val.(*adapters.TypedNode), nil
 }
 
 func (s *mapNodeStorage) Drop(id *pb.NodeIdentifier) error {

@@ -1,14 +1,8 @@
-package configuration
+package repr
 
 import "fmt"
 
-type IntMatrix interface {
-	At(i, j int) int
-	Set(val, i, j int) error
-	Dims() (r, c int)
-}
-
-func NewIntMatrix(r, c int) IntMatrix {
+func newIntMatrix(r, c int) *intMatrix {
 	return &intMatrix{
 		data: make([]int, r*c),
 		r:    r,
@@ -29,7 +23,7 @@ func (im *intMatrix) Set(val, i, j int) error {
 	if j >= im.c {
 		return fmt.Errorf("col index out of range")
 	}
-	im.data[im.r * i + j] = val
+	im.data[im.r*i+j] = val
 	return nil
 }
 

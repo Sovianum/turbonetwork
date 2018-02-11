@@ -5,12 +5,14 @@ import (
 	"sync"
 )
 
+// ObjectStorage is an interface of a simple key-value storage of arbitrary objects
 type ObjectStorage interface {
 	Add(key, value interface{}) error
 	Get(key interface{}) (interface{}, error)
 	Drop(key interface{}) error
 }
 
+// NewMapObjectStorage constructs ObjectStorage based on synchronized map
 func NewMapObjectStorage() ObjectStorage {
 	return &mapObjectStorage{
 		mapLock:   sync.Mutex{},

@@ -5,17 +5,18 @@ import (
 	"github.com/Sovianum/turbocycle/common"
 	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/Sovianum/turbonetwork/pb"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"regexp"
 )
 
 type connType = pb.NodeDescription_AttachedPortDescription_PortType
 
 type portDescription struct {
-	baseID int
+	baseID     int
 	contextIDs []int
 }
 
+// RepresentationNode is an object which represents physical node on the NodeService
+// it also enables checking total graph properties without creation of physical nodes
 type RepresentationNode interface {
 	graph.Node
 	GetPortByName(portTag string) (graph.Port, error)
@@ -23,7 +24,9 @@ type RepresentationNode interface {
 	SelectState(stateID int) error
 }
 
-func NewRepresentationNode(description adapters.NodeDescription, multiPortMap map[string]int) (RepresentationNode, error) {
+// NewRepresentationNode constructs RepresentationNode by its description and map of its multiports
+// which maps multiport prefix to its cardinality
+func NewRepresentationNode(description *pb.NodeDescription, multiPortMap map[string]int) (RepresentationNode, error) {
 	if err := checkArgs(description, multiPortMap); err != nil {
 		return nil, err
 	}
@@ -34,13 +37,12 @@ func NewRepresentationNode(description adapters.NodeDescription, multiPortMap ma
 	}
 
 	result := &representationNode{
-		description:  description,
-		ports:        make([]graph.Port, len(description.BasePorts)),
-		requirePorts: make([]graph.Port, 0),
-		updatePorts:  make([]graph.Port, 0),
-		portIndex:    make(map[string]int),
+		description:      description,
+		ports:            make([]graph.Port, len(description.BasePorts)),
+		requirePorts:     make([]graph.Port, 0),
+		updatePorts:      make([]graph.Port, 0),
+		portIndex:        make(map[string]int),
 		descriptionIndex: make(map[graph.Port]portDescription),
-
 	}
 
 	for i, basePortDescription := range description.BasePorts {
@@ -78,13 +80,13 @@ func NewRepresentationNode(description adapters.NodeDescription, multiPortMap ma
 type representationNode struct {
 	graph.BaseNode
 
-	description adapters.NodeDescription
+	description *pb.NodeDescription
 	ports       []graph.Port
 
-	portIndex    map[string]int
+	portIndex        map[string]int
 	descriptionIndex map[graph.Port]portDescription
-	requirePorts []graph.Port
-	updatePorts  []graph.Port
+	requirePorts     []graph.Port
+	updatePorts      []graph.Port
 }
 
 func (node *representationNode) GetName() string {
@@ -124,7 +126,7 @@ func (node *representationNode) GetConnectionLines() []map[graph.Port]connType {
 	}
 
 	result := make([]map[graph.Port]connType, resultLength)
-	for i := range result{
+	for i := range result {
 		// it is safe to pass i to getConnectionLine even for context independent nodes
 		// cos it won't be used
 		result[i] = node.getConnectionLine(i)
@@ -171,14 +173,14 @@ func (node *representationNode) getConnectionLine(contextID int) map[graph.Port]
 }
 
 func (node *representationNode) getPortByName(portTag string) (graph.Port, error) {
-	if index, ok := node.portIndex[portTag]; !ok {
+	index, ok := node.portIndex[portTag]
+	if !ok {
 		return nil, fmt.Errorf("port %s not found", portTag)
-	} else {
-		return node.ports[index], nil
 	}
+	return node.ports[index], nil
 }
 
-func getPortDescription(portName string, nodeDescription adapters.NodeDescription) portDescription {
+func getPortDescription(portName string, nodeDescription *pb.NodeDescription) portDescription {
 	result := portDescription{}
 	prefix := getPrefix(portName)
 	var portType pb.NodeDescription_AttachedPortDescription_PortType
@@ -203,7 +205,7 @@ func getPortDescription(portName string, nodeDescription adapters.NodeDescriptio
 	return result
 }
 
-func checkArgs(description adapters.NodeDescription, multiPortMap map[string]int) error {
+func checkArgs(description *pb.NodeDescription, multiPortMap map[string]int) error {
 	basePorts := description.BasePorts
 	seen := make(map[string]bool)
 	contextDependentTags := make(map[string]bool)
@@ -220,7 +222,7 @@ func checkArgs(description adapters.NodeDescription, multiPortMap map[string]int
 		if _, ok := seen[prefix]; ok {
 			errList = append(errList, fmt.Errorf(
 				"duplicate port tag %s",
-				seen[prefix],
+				prefix,
 			))
 			continue
 		}

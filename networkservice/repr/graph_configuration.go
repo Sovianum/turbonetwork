@@ -1,11 +1,11 @@
-package configuration
+package repr
 
 import (
 	"github.com/Sovianum/turbonetwork/pb"
 	"math"
 )
 
-func ValidateConnMatrix(cm IntMatrix, validatorFunc func(x1, x2 int) int) bool {
+func validateConnMatrix(cm *intMatrix, validatorFunc func(x1, x2 int) int) bool {
 	rows, cols := cm.Dims()
 
 	for i := 0; i != rows; i++ {
@@ -18,7 +18,7 @@ func ValidateConnMatrix(cm IntMatrix, validatorFunc func(x1, x2 int) int) bool {
 	return true
 }
 
-func DefaultValidator(x1, x2 int) int {
+func defaultValidator(x1, x2 int) int {
 	n := int(pb.NodeDescription_AttachedPortDescription_NEUTRAL)
 	i := int(pb.NodeDescription_AttachedPortDescription_INPUT)
 	o := int(pb.NodeDescription_AttachedPortDescription_OUTPUT)

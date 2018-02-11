@@ -1,9 +1,9 @@
-package server
+package nodeservice
 
 import (
-	"github.com/stretchr/testify/suite"
 	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
+	"github.com/Sovianum/turbonetwork/nodeservice/adapters"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 

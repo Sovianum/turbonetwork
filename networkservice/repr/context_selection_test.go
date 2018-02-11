@@ -1,11 +1,11 @@
 package repr
 
 import (
-	"testing"
 	"fmt"
 	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/stretchr/testify/suite"
 	"github.com/Sovianum/turbonetwork/pb"
+	"github.com/stretchr/testify/suite"
+	"testing"
 )
 
 type ContextSelectorTestSuite struct {
@@ -215,7 +215,7 @@ func (s *ContextSelectorTestSuite) TestConfigure() {
 	err := s.selector.configure()
 	s.Require().Nil(err)
 
-	mustGetPorts := func(f func()([]graph.Port, error)) []graph.Port {
+	mustGetPorts := func(f func() ([]graph.Port, error)) []graph.Port {
 		if ports, err := f(); err != nil {
 			panic(err)
 		} else {
@@ -262,7 +262,7 @@ func (s *ContextSelectorTestSuite) TestConfigure() {
 	s.True(inArray(mustExtract(s.t2, portBTag), mustGetPorts(s.t2.GetUpdatePorts)))
 }
 
-func printConnConfigs(connConfigs [][]map[graph.Port]connType)  {
+func printConnConfigs(connConfigs [][]map[graph.Port]connType) {
 	str := ""
 	for i, config := range connConfigs {
 		str += fmt.Sprintf("%d\n", i)
