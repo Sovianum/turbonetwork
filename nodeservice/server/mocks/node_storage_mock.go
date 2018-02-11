@@ -2,7 +2,7 @@ package mocks
 
 import (
 	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"fmt"
 )
 

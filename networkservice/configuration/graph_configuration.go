@@ -1,7 +1,7 @@
 package configuration
 
 import (
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"math"
 )
 

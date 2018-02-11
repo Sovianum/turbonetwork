@@ -2,7 +2,7 @@ package adapters
 
 import (
 	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 )
 
 type PortDescription = *pb.PortDescription

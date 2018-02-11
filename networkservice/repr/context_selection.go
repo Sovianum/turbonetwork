@@ -3,7 +3,7 @@ package repr
 import (
 	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/Sovianum/turbonetwork/networkservice/configuration"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"fmt"
 )
 

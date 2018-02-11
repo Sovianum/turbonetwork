@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"golang.org/x/net/context"
 	"runtime/debug"
@@ -21,14 +21,14 @@ type gteServer struct {
 	factory     adapters.NodeAdapterFactory
 }
 
-func (s *gteServer) CreateNodes(c context.Context, r *pb.CreateRequest) (resp *pb.ModifyResponse, e error) {
+func (s *gteServer) CreateNodes(c context.Context, r *pb.NodeCreateRequest) (resp *pb.NodeModifyResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
 		}
 	}()
 
-	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
+	responseItems := make([]*pb.NodeModifyResponse_UnitResponse, len(r.Items))
 
 	for i, item := range r.Items {
 		adapter, err := s.factory.GetAdapter(item.NodeType)
@@ -56,14 +56,14 @@ func (s *gteServer) CreateNodes(c context.Context, r *pb.CreateRequest) (resp *p
 	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) UpdateNodes(c context.Context, r *pb.UpdateRequest) (resp *pb.ModifyResponse, e error) {
+func (s *gteServer) UpdateNodes(c context.Context, r *pb.NodeUpdateRequest) (resp *pb.NodeModifyResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
 		}
 	}()
 
-	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
+	responseItems := make([]*pb.NodeModifyResponse_UnitResponse, len(r.Items))
 
 	for i, item := range r.Items {
 		node, nodeErr := s.nodeStorage.Get(item.Identifier)
@@ -89,14 +89,14 @@ func (s *gteServer) UpdateNodes(c context.Context, r *pb.UpdateRequest) (resp *p
 	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *pb.ModifyResponse, e error) {
+func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *pb.NodeModifyResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
 		}
 	}()
 
-	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(ids.Ids))
+	responseItems := make([]*pb.NodeModifyResponse_UnitResponse, len(ids.Ids))
 
 	for i, id := range ids.Ids {
 		if err := s.nodeStorage.Drop(id); err != nil {
@@ -109,14 +109,14 @@ func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *p
 	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) GetNodes(c context.Context, r *pb.GetStateRequest) (resp *pb.StateResponse, e error) {
+func (s *gteServer) GetNodes(c context.Context, r *pb.NodeStateRequest) (resp *pb.NodeStateResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetStateErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
 		}
 	}()
 
-	responseItems := make([]*pb.StateResponse_UnitResponse, len(r.Items))
+	responseItems := make([]*pb.NodeStateResponse_UnitResponse, len(r.Items))
 	for i, item := range r.Items {
 		adapter, err := s.factory.GetAdapter(item.Identifier.NodeType)
 		if err != nil {
@@ -142,7 +142,7 @@ func (s *gteServer) GetNodes(c context.Context, r *pb.GetStateRequest) (resp *pb
 	return GetStateSuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.ModifyResponse, error error) {
+func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.NodeModifyResponse, error error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
@@ -150,7 +150,7 @@ func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.Modi
 		}
 	}()
 
-	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Ids))
+	responseItems := make([]*pb.NodeModifyResponse_UnitResponse, len(r.Ids))
 
 	for i, item := range r.Ids {
 		node, nodeErr := s.nodeStorage.Get(item)
@@ -171,7 +171,7 @@ func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.Modi
 	return GetModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.ModifyResponse, e error) {
+func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.NodeModifyResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = GetModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), InternalError)
@@ -199,7 +199,7 @@ func (s *gteServer) Link(c context.Context, r *pb.LinkRequest) (resp *pb.ModifyR
 		return port, nil
 	}
 
-	responseItems := make([]*pb.ModifyResponse_UnitResponse, len(r.Items))
+	responseItems := make([]*pb.NodeModifyResponse_UnitResponse, len(r.Items))
 	for i, item := range r.Items {
 		port1, portErr1 := portExtractor(item.Id1)
 		if portErr1 != nil {

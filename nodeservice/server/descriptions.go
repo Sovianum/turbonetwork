@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 )
 

@@ -4,18 +4,18 @@ option go_package="pb";
 
 
 service NodeService {
-    rpc CreateNodes (CreateRequest) returns (ModifyResponse) {};
-    rpc UpdateNodes (UpdateRequest) returns (ModifyResponse) {};
-    rpc DeleteNodes (Identifiers) returns (ModifyResponse) {};
-    rpc GetNodes (GetStateRequest) returns (StateResponse) {};
-    rpc Process (Identifiers) returns (ModifyResponse) {};
-    rpc Link (LinkRequest) returns (ModifyResponse) {};
+    rpc CreateNodes (NodeCreateRequest) returns (NodeModifyResponse) {};
+    rpc UpdateNodes (NodeUpdateRequest) returns (NodeModifyResponse) {};
+    rpc DeleteNodes (Identifiers) returns (NodeModifyResponse) {};
+    rpc GetNodes (NodeStateRequest) returns (NodeStateResponse) {};
+    rpc Process (Identifiers) returns (NodeModifyResponse) {};
+    rpc Link (LinkRequest) returns (NodeModifyResponse) {};
     rpc GetDescription (Empty) returns (ServiceDescription) {};
 }
 
 message Empty {}
 
-message StateResponse {
+message NodeStateResponse {
     BaseResponse base = 1;
     repeated UnitResponse items = 2;
 
@@ -26,7 +26,7 @@ message StateResponse {
     }
 }
 
-message ModifyResponse {
+message NodeModifyResponse {
     BaseResponse base = 1;
     repeated UnitResponse items = 2;
 
@@ -39,6 +39,7 @@ message ModifyResponse {
 message BaseResponse {
     int32 status = 1;
     string description = 2;
+    repeated string messages = 3;
 }
 
 message NodeState {
@@ -97,7 +98,7 @@ enum LinkType {
     WEAK_BOTH = 3;
 }
 
-message UpdateRequest {
+message NodeUpdateRequest {
     repeated UnitRequest items = 1;
 
     message UnitRequest {
@@ -106,7 +107,7 @@ message UpdateRequest {
     }
 }
 
-message GetStateRequest {
+message NodeStateRequest {
     repeated UnitRequest items = 1;
 
     message UnitRequest {
@@ -116,7 +117,7 @@ message GetStateRequest {
     }
 }
 
-message CreateRequest {
+message NodeCreateRequest {
     repeated UnitRequest items = 1;
 
     message UnitRequest {
@@ -132,7 +133,8 @@ message Identifiers {
 
 message PortIdentifier {
     NodeIdentifier nodeIdentifier = 1;
-    string portTag = 2;
+    string nodeName = 2;
+    string portTag = 3;
 }
 
 message NodeIdentifier {

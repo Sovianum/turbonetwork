@@ -4,45 +4,39 @@ option go_package="pb";
 import "node_service.proto";
 
 service NetworkService {
-    rpc CreateNetwork(CreateRequest) returns (ModifyResponse) {};
-    rpc UpdateNetwork(UpdateRequest) returns (ModifyResponse) {};
-    rpc DeleteNetwork(NetworkIdentifier) returns (ModifyResponse) {};
-    rpc Process(ProcessRequest) returns (ModifyResponse) {};
-    rpc Solve(SolveRequest) returns (ModifyResponse) {};
-    rpc GetState(GetStateRequest) returns (StateResponse) {};
-    rpc GetDescription(nodeservice.Empty) returns (NetworkDescription) {};
+    rpc CreateNetwork (GraphCreateRequest) returns (GraphModifyResponse) {};
+    rpc UpdateNetwork (GraphUpdateRequest) returns (GraphModifyResponse) {};
+    rpc DeleteNetwork (NetworkIdentifier) returns (GraphModifyResponse) {};
+    rpc Process (GraphProcessRequest) returns (GraphModifyResponse) {};
+    rpc Solve (GraphSolveRequest) returns (GraphModifyResponse) {};
+    rpc GetState (GraphStateRequest) returns (GraphStateResponse) {};
+    rpc GetDescription (nodeservice.Empty) returns (NetworkDescription) {};
 }
 
 message NetworkDescription {
     repeated nodeservice.ServiceDescription items = 1;
 }
 
-message StateResponse {
+message GraphStateResponse {
     map<string, nodeservice.NodeState> states = 1;
 }
 
-message ModifyResponse {
-    BaseResponse base = 1;
+message GraphModifyResponse {
+    nodeservice.BaseResponse base = 1;
     NetworkIdentifier identifier = 2;
 }
 
-message BaseResponse {
-    int32 status = 1;
-    string description = 2;
-    repeated string messages = 3;
-}
-
-message GetStateRequest {
+message GraphStateRequest {
     repeated string requiredNodes = 1;
 }
 
-message SolveRequest {
+message GraphSolveRequest {
     NetworkIdentifier identifier = 1;
-    PortIdentifier vectorPotrt = 2;
+    nodeservice.PortIdentifier vectorPotrt = 2;
     SolutionOptions solutionOptions = 3;
 }
 
-message ProcessRequest {
+message GraphProcessRequest {
     NetworkIdentifier identifier = 1;
     ProcessOptions processOptions = 2;
 }
@@ -68,31 +62,20 @@ message ProcessOptions {
     int32 iterNum = 3;
 }
 
-message UpdateRequest {
+message GraphUpdateRequest {
     NetworkIdentifier identifier = 1;
     map<string, nodeservice.RequestData> nodeUpdates = 2;
 }
 
-message CreateRequest {
+message GraphCreateRequest {
     map<string, nodeservice.RequestData> nodeRequests = 1;
-    repeated LinkRequest linkRequests = 2;
+    repeated nodeservice.LinkRequest.UnitRequest linkRequests = 2;
     repeated VariatorIdentifier variators = 3;
-}
-
-message LinkRequest {
-    PortIdentifier id1 = 1;
-    PortIdentifier id2 = 2;
-    nodeservice.LinkType linkType = 3;
 }
 
 message VariatorIdentifier {
     string nodeName = 1;
     string variableName = 2;
-}
-
-message PortIdentifier {
-    string nodeName = 1;
-    string portTag = 2;
 }
 
 message NetworkIdentifier {

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server"
 	"github.com/Sovianum/turbonetwork/nodeservice/server/adapters"
 	"google.golang.org/grpc"
@@ -20,7 +20,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	gteServer := server.NewGTEServer()
+	gteServer := server.NewGTEServer(nil)
 
 	pb.RegisterNodeServiceServer(grpcServer, gteServer)
 	go grpcServer.Serve(lis)

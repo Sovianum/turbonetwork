@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/Sovianum/turbocycle/core/graph"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"github.com/Sovianum/turbonetwork/nodeservice/server/mocks"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -517,14 +517,14 @@ func (s *GTEServerTestSuite) TestLink_PortGetterError() {
 	s.EqualValues(e.Error(), r.Items[0].Base.Description)
 }
 
-func (s *GTEServerTestSuite) getValidGetStateRequest() *pb.GetStateRequest {
+func (s *GTEServerTestSuite) getValidGetStateRequest() *pb.NodeStateRequest {
 	ids := s.getNodeIdentifiers(1)
-	result := &pb.GetStateRequest{
-		Items:make([]*pb.GetStateRequest_UnitRequest, 0),
+	result := &pb.NodeStateRequest{
+		Items:make([]*pb.NodeStateRequest_UnitRequest, 0),
 	}
 
 	for _, id := range ids.Ids {
-		result.Items = append(result.Items, &pb.GetStateRequest_UnitRequest{
+		result.Items = append(result.Items, &pb.NodeStateRequest_UnitRequest{
 			Identifier: id,
 		})
 	}
@@ -550,7 +550,7 @@ func (s *GTEServerTestSuite) getValidLinkRequest() *pb.LinkRequest {
 	}
 }
 
-func (s *GTEServerTestSuite) getValidCreateRequest() *pb.CreateRequest {
+func (s *GTEServerTestSuite) getValidCreateRequest() *pb.NodeCreateRequest {
 	req, _ := GetCreateRequest(
 		[]string{"node"},
 		[]string{"test"},
@@ -561,7 +561,7 @@ func (s *GTEServerTestSuite) getValidCreateRequest() *pb.CreateRequest {
 	return req
 }
 
-func (s *GTEServerTestSuite) getValidUpdateRequest() *pb.UpdateRequest {
+func (s *GTEServerTestSuite) getValidUpdateRequest() *pb.NodeUpdateRequest {
 	ids := s.getNodeIdentifiers(1)
 	req, _ := GetUpdateRequest(ids.Ids, []map[string]float64{{}})
 	return req

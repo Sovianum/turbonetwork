@@ -1,7 +1,7 @@
 package repr
 
 import (
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"

@@ -1,20 +1,20 @@
 package server
 
 import (
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 	"fmt"
 )
 
-func GetUpdateRequest(ids []*pb.NodeIdentifier, args []map[string]float64) (*pb.UpdateRequest, error) {
+func GetUpdateRequest(ids []*pb.NodeIdentifier, args []map[string]float64) (*pb.NodeUpdateRequest, error) {
 	if len(ids) != len(args) {
 		return nil, fmt.Errorf("length of arguments are not equal")
 	}
 
-	result := &pb.UpdateRequest{
-		Items:make([]*pb.UpdateRequest_UnitRequest, len(ids)),
+	result := &pb.NodeUpdateRequest{
+		Items:make([]*pb.NodeUpdateRequest_UnitRequest, len(ids)),
 	}
 	for i := range ids {
-		result.Items[i] = &pb.UpdateRequest_UnitRequest{
+		result.Items[i] = &pb.NodeUpdateRequest_UnitRequest{
 			Identifier:ids[i],
 			Data:&pb.RequestData{
 				DKwargs:args[i],
@@ -24,16 +24,16 @@ func GetUpdateRequest(ids []*pb.NodeIdentifier, args []map[string]float64) (*pb.
 	return result, nil
 }
 
-func GetCreateRequest(nodeNames, nodeTypes []string, args []map[string]float64) (*pb.CreateRequest, error) {
+func GetCreateRequest(nodeNames, nodeTypes []string, args []map[string]float64) (*pb.NodeCreateRequest, error) {
 	if len(nodeNames) != len(nodeTypes) || len(nodeNames) != len(args) {
 		return nil, fmt.Errorf("length of arguments are not equal")
 	}
 
-	result := &pb.CreateRequest{
-		Items:make([]*pb.CreateRequest_UnitRequest, len(nodeNames)),
+	result := &pb.NodeCreateRequest{
+		Items:make([]*pb.NodeCreateRequest_UnitRequest, len(nodeNames)),
 	}
 	for i := range nodeNames {
-		result.Items[i] = &pb.CreateRequest_UnitRequest{
+		result.Items[i] = &pb.NodeCreateRequest_UnitRequest{
 			NodeType:nodeTypes[i],
 			NodeName:nodeNames[i],
 			Data:&pb.RequestData{

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/Sovianum/turbocycle/core/graph"
 	"github.com/stretchr/testify/suite"
-	"github.com/Sovianum/turbonetwork/nodeservice/pb"
+	"github.com/Sovianum/turbonetwork/pb"
 )
 
 type ContextSelectorTestSuite struct {
