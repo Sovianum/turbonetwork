@@ -264,7 +264,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Success() {
 		}),
 	}, nil)
 
-	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
+	response, err := s.server.GetNodesState(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -282,7 +282,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterNotFound() {
 		}, e,
 	)
 
-	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
+	response, err := s.server.GetNodesState(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -307,7 +307,7 @@ func (s *GTEServerTestSuite) TestGetNodes_GetterError() {
 		}),
 	}, nil)
 
-	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
+	response, err := s.server.GetNodesState(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -327,7 +327,7 @@ func (s *GTEServerTestSuite) TestGetNodes_StorageError() {
 	e := fmt.Errorf("getter failed")
 	s.storage.ExpectGetResponse(nil, e)
 
-	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
+	response, err := s.server.GetNodesState(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(response.Items))
@@ -352,7 +352,7 @@ func (s *GTEServerTestSuite) TestGetNodes_Panic() {
 		}),
 	}, nil)
 
-	response, err := s.server.GetNodes(nil, s.getValidGetStateRequest())
+	response, err := s.server.GetNodesState(nil, s.getValidGetStateRequest())
 
 	s.Require().Nil(err)
 	s.Require().Equal(0, len(response.Items))
@@ -567,8 +567,8 @@ func (s *GTEServerTestSuite) getValidUpdateRequest() *pb.NodeUpdateRequest {
 	return req
 }
 
-func (s *GTEServerTestSuite) getNodeIdentifiers(ids ...int32) *pb.Identifiers {
-	result := &pb.Identifiers{Ids: make([]*pb.NodeIdentifier, len(ids))}
+func (s *GTEServerTestSuite) getNodeIdentifiers(ids ...int32) *pb.NodeIdentifiers {
+	result := &pb.NodeIdentifiers{Ids: make([]*pb.NodeIdentifier, len(ids))}
 	for i, id := range ids {
 		result.Ids[i] = &pb.NodeIdentifier{Id: id}
 	}

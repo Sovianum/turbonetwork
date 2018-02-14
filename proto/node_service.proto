@@ -6,14 +6,27 @@ option go_package="pb";
 service NodeService {
     rpc CreateNodes (NodeCreateRequest) returns (NodeModifyResponse) {};
     rpc UpdateNodes (NodeUpdateRequest) returns (NodeModifyResponse) {};
-    rpc DeleteNodes (Identifiers) returns (NodeModifyResponse) {};
-    rpc GetNodes (NodeStateRequest) returns (NodeStateResponse) {};
-    rpc Process (Identifiers) returns (NodeModifyResponse) {};
+    rpc DeleteNodes (NodeIdentifiers) returns (NodeModifyResponse) {};
+    rpc GetNodesState (NodeStateRequest) returns (NodeStateResponse) {};
+    rpc GetPortsState (PortStateRequest) returns (PortStateResponse) {};
+    rpc SetPortsState (PortUpdateRequest) returns (PortModifyResponse) {};
+    rpc Process (NodeIdentifiers) returns (NodeModifyResponse) {};
     rpc Link (LinkRequest) returns (NodeModifyResponse) {};
     rpc GetDescription (Empty) returns (ServiceDescription) {};
 }
 
 message Empty {}
+
+message PortStateResponse {
+    BaseResponse base = 1;
+    repeated UnitResponse items = 2;
+
+    message UnitResponse {
+        BaseResponse base = 1;
+        PortIdentifier identifier = 2;
+        PortState state = 3;
+    }
+}
 
 message NodeStateResponse {
     BaseResponse base = 1;
@@ -26,11 +39,22 @@ message NodeStateResponse {
     }
 }
 
+message PortModifyResponse {
+    BaseResponse base = 1;
+    repeated UnitResponse items = 2;
+
+    message UnitResponse {
+        PortIdentifier identifier = 1;
+        BaseResponse base = 2;
+    }
+}
+
 message NodeModifyResponse {
     BaseResponse base = 1;
     repeated UnitResponse items = 2;
 
     message UnitResponse {
+        // multiple nodes for link request
         repeated NodeIdentifier identifiers = 1;
         BaseResponse base = 2;
     }
@@ -44,9 +68,19 @@ message BaseResponse {
 
 message NodeState {
     string name = 1;
-    map<string, double> numValues = 2;
-    map<string, string> stringValues = 3;
-    map<string, NodeState> children = 4;
+    State state = 2;
+    repeated PortState portStates = 3;
+    map<string, NodeState> children = 4; // used for composite nodes
+}
+
+message PortState {
+    string tag = 1;
+    State state = 2;
+}
+
+message State {
+    map<string, double> numValues = 1;
+    map<string, string> stringValues = 2;
 }
 
 message ServiceDescription {
@@ -107,6 +141,25 @@ message NodeUpdateRequest {
     }
 }
 
+message PortUpdateRequest {
+    repeated UnitRequest items = 1;
+
+    message UnitRequest {
+        PortIdentifier identifier = 1;
+        PortState state = 2;
+    }
+}
+
+message PortStateRequest {
+    repeated UnitRequest items = 1;
+
+    message UnitRequest {
+        PortIdentifier identifier = 1;
+        // optional field neccessary if complete state is not required
+        repeated string requiredFields = 2;
+    }
+}
+
 message NodeStateRequest {
     repeated UnitRequest items = 1;
 
@@ -127,14 +180,14 @@ message NodeCreateRequest {
     }
 }
 
-message Identifiers {
-    repeated NodeIdentifier ids = 1;
-}
-
 message PortIdentifier {
     NodeIdentifier nodeIdentifier = 1;
     string nodeName = 2;
     string portTag = 3;
+}
+
+message NodeIdentifiers {
+    repeated NodeIdentifier ids = 1;
 }
 
 message NodeIdentifier {

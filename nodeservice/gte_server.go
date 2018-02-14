@@ -90,7 +90,7 @@ func (s *gteServer) UpdateNodes(c context.Context, r *pb.NodeUpdateRequest) (res
 	return getModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *pb.NodeModifyResponse, e error) {
+func (s *gteServer) DeleteNodes(c context.Context, ids *pb.NodeIdentifiers) (resp *pb.NodeModifyResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = getModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), internalError)
@@ -110,7 +110,7 @@ func (s *gteServer) DeleteNodes(c context.Context, ids *pb.Identifiers) (resp *p
 	return getModifySuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) GetNodes(c context.Context, r *pb.NodeStateRequest) (resp *pb.NodeStateResponse, e error) {
+func (s *gteServer) GetNodesState(c context.Context, r *pb.NodeStateRequest) (resp *pb.NodeStateResponse, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = getStateErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), internalError)
@@ -143,7 +143,15 @@ func (s *gteServer) GetNodes(c context.Context, r *pb.NodeStateRequest) (resp *p
 	return getStateSuccessResponse(responseItems), nil
 }
 
-func (s *gteServer) Process(c context.Context, r *pb.Identifiers) (resp *pb.NodeModifyResponse, error error) {
+func (s *gteServer) GetPortsState(context.Context, *pb.PortStateRequest) (*pb.PortStateResponse, error) {
+	panic("implement me")
+}
+
+func (s *gteServer) SetPortsState(context.Context, *pb.PortUpdateRequest) (*pb.PortModifyResponse, error) {
+	panic("implement me")
+}
+
+func (s *gteServer) Process(c context.Context, r *pb.NodeIdentifiers) (resp *pb.NodeModifyResponse, error error) {
 	defer func() {
 		if r := recover(); r != nil {
 			resp = getModifyErrResponse(fmt.Sprintf("%v, %s", r, debug.Stack()), internalError)

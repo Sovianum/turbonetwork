@@ -41,7 +41,7 @@ func main() {
 	}
 	log.Printf("Succeeded %v", *resp)
 
-	resp1, err1 := client.Process(context.Background(), &pb.Identifiers{
+	resp1, err1 := client.Process(context.Background(), &pb.NodeIdentifiers{
 		Ids: []*pb.NodeIdentifier{resp.Items[0].Identifiers[0]},
 	})
 	if err1 != nil {
